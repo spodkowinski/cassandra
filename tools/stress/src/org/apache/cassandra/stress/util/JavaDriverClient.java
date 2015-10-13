@@ -104,7 +104,7 @@ public class JavaDriverClient
         {
             SSLContext sslContext;
             sslContext = SSLFactory.createSSLContext(encryptionOptions, true);
-            SSLOptions sslOptions = new SSLOptions(sslContext, encryptionOptions.cipher_suites);
+            SSLOptions sslOptions = new SSLOptions(sslContext, SSLOptions.DEFAULT_SSL_CIPHER_SUITES);
             clusterBuilder.withSSL(sslOptions);
         }
 

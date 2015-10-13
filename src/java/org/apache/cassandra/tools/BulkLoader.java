@@ -268,7 +268,7 @@ public class BulkLoader
             throw new RuntimeException("Could not create SSL Context.", e);
         }
 
-        return new SSLOptions(sslContext, clientEncryptionOptions.cipher_suites);
+        return new SSLOptions(sslContext, SSLOptions.DEFAULT_SSL_CIPHER_SUITES);
     }
 
     static class ExternalClient extends NativeSSTableLoaderClient
@@ -492,10 +492,6 @@ public class BulkLoader
                     opts.encOptions.store_type = cmd.getOptionValue(SSL_STORE_TYPE);
                 }
 
-                if (cmd.hasOption(SSL_CIPHER_SUITES))
-                {
-                    opts.encOptions.cipher_suites = cmd.getOptionValue(SSL_CIPHER_SUITES).split(",");
-                }
 
                 return opts;
             }
