@@ -253,8 +253,6 @@ public class CustomTThreadPoolServer extends TServer
                         params.requireClientAuth(true);
                     }
                     TServerSocket sslServer = TSSLTransportFactory.getServerSocket(addr.getPort(), 0, addr.getAddress(), params);
-                    SSLServerSocket sslServerSocket = (SSLServerSocket) sslServer.getServerSocket();
-                    sslServerSocket.setEnabledProtocols(SSLFactory.ACCEPTED_PROTOCOLS);
                     serverTransport = new TCustomServerSocket(sslServer.getServerSocket(), args.keepAlive, args.sendBufferSize, args.recvBufferSize);
                 }
                 else
