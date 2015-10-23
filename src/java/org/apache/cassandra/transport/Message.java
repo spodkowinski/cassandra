@@ -41,7 +41,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.cassandra.metrics.MessageTypeMetrics;
 import org.apache.cassandra.service.ClientWarn;
 import org.apache.cassandra.transport.messages.*;
 import org.apache.cassandra.service.QueryState;
@@ -493,7 +493,6 @@ public abstract class Message
 
             final Response response;
             final ServerConnection connection;
-
             try
             {
                 assert request.connection() instanceof ServerConnection;
@@ -504,7 +503,9 @@ public abstract class Message
                 QueryState qstate = connection.validateNewMessage(request.type, connection.getVersion(), request.getStreamId());
 
                 logger.trace("Received: {}, v={}", request, connection.getVersion());
+                final long start = System.nanoTime();
                 response = request.execute(qstate);
+                MessageTypeMetrics.get(request.type).addNano(System.nanoTime() - start);
                 response.setStreamId(request.getStreamId());
                 response.setWarnings(ClientWarn.getWarnings());
                 response.attach(connection);
@@ -515,6 +516,7 @@ public abstract class Message
                 JVMStabilityInspector.inspectThrowable(t);
                 UnexpectedChannelExceptionHandler handler = new UnexpectedChannelExceptionHandler(ctx.channel(), true);
                 flush(new FlushItem(ctx, ErrorMessage.fromException(t, handler).setStreamId(request.getStreamId()), request.getSourceFrame()));
+                MessageTypeMetrics.get(request.type).failures.mark();
                 return;
             }
             finally
