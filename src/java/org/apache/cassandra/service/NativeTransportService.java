@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
@@ -49,6 +50,7 @@ public class NativeTransportService
     private Collection<Server> servers = Collections.emptyList();
 
     private boolean initialized = false;
+    private final AtomicBoolean isDestroyed = new AtomicBoolean(false);
     private EventLoopGroup workerGroup;
     private EventExecutor eventExecutorGroup;
 
@@ -141,6 +143,9 @@ public class NativeTransportService
      */
     public void destroy()
     {
+        if (!isDestroyed.compareAndSet(false, true))
+            return;
+
         stop();
         servers = Collections.emptyList();
 
