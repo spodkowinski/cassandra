@@ -337,7 +337,18 @@ public class ClientState
     {
         validateLogin();
         if (user.isAnonymous())
-            throw new UnauthorizedException("You have to be logged in and not anonymous to perform this request");
+        {
+            if (DatabaseDescriptor.getAuthenticator().getClass() == AllowAllAuthenticator.class)
+            {
+                throw new UnauthorizedException(String.format("Operation denied using %s: " +
+                                                "you have to set a different authenticator option in cassandra.yaml",
+                                                AllowAllAuthenticator.class.getSimpleName()));
+            }
+            else
+            {
+                throw new UnauthorizedException("You have to be logged in and not anonymous to perform this request");
+            }
+        }
     }
 
     public void ensureIsSuper(String message) throws UnauthorizedException
