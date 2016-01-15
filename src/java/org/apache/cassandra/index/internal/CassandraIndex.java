@@ -342,7 +342,7 @@ public abstract class CassandraIndex implements Index
 
             public void insertRow(Row row)
             {
-                if (isPrimaryKeyIndex())
+                if (isPrimaryKeyIndex() && !row.isStatic())
                 {
                     indexPrimaryKey(row.clustering(),
                                     getPrimaryKeyIndexLiveness(row),

@@ -32,6 +32,17 @@ public class QueryWithIndexedSSTableTest extends CQLTester
     @Test
     public void queryIndexedSSTableTest() throws Throwable
     {
+        querySSTableTest(false);
+    }
+
+    @Test
+    public void queryIndexedSSTableSecondaryIndexOnClusteringTest() throws Throwable
+    {
+        querySSTableTest(true);
+    }
+
+    private void querySSTableTest(boolean secondaryIndex) throws Throwable
+    {
         // That test reproduces the bug from CASSANDRA-10903 and the fact we have a static column is
         // relevant to that reproduction in particular as it forces a slightly different code path that
         // if there wasn't a static.
@@ -40,12 +51,15 @@ public class QueryWithIndexedSSTableTest extends CQLTester
         int VALUE_LENGTH = 100;
 
         createTable("CREATE TABLE %s (k int, t int, s text static, v text, PRIMARY KEY (k, t))");
+        if (secondaryIndex)
+            // note that we put the index on the clustering key, see CASSANDRA-11021
+            createIndex("CREATE INDEX ix ON %s (t)");
 
         // We create a partition that is big enough that the underlying sstable will be indexed
         // For that, we use a large-ish number of row, and a value that isn't too small.
         String text = makeRandomTest(VALUE_LENGTH);
         for (int i = 0; i < ROWS; i++)
-            execute("INSERT INTO %s(k, t, v) VALUES (?, ?, ?)", 0, i, text + i);
+            execute("INSERT INTO %s(k, t, s, v) VALUES (?, ?, ?, ?)", 0, i, text + i, text + i);
 
         flush();
         compact();
@@ -66,6 +80,10 @@ public class QueryWithIndexedSSTableTest extends CQLTester
 
         assertRowCount(execute("SELECT s FROM %s WHERE k = ?", 0), ROWS);
         assertRowCount(execute("SELECT s FROM %s WHERE k = ? ORDER BY t DESC", 0), ROWS);
+
+        if (secondaryIndex)
+            // query by secondary index
+            assertRowCount(execute("SELECT * FROM %s WHERE t = ?", 0), 1);
 
         assertRowCount(execute("SELECT DISTINCT s FROM %s WHERE k = ?", 0), 1);
         assertRowCount(execute("SELECT DISTINCT s FROM %s WHERE k = ? ORDER BY t DESC", 0), 1);
