@@ -410,6 +410,9 @@
           	<exclusion groupId="log4j" artifactId="log4j"/>
           </dependency>
           <dependency groupId="joda-time" artifactId="joda-time" version="2.4" />
+          <dependency groupId="com.pholser" artifactId="junit-quickcheck-core" version="0.6-beta-1" />
+          <dependency groupId="com.pholser" artifactId="junit-quickcheck-generators" version="0.6-beta-1" />
+          <dependency groupId="com.pholser" artifactId="junit-quickcheck-guava" version="0.6-beta-1" />
 
         </dependencyManagement>
         <developer id="alakshman" name="Avinash Lakshman"/>
@@ -498,6 +501,9 @@
                 artifactId="cassandra-parent"
                 version="${version}"/>
         <dependency groupId="joda-time" artifactId="joda-time"/>
+      	<dependency groupId="com.pholser" artifactId="junit-quickcheck-core"/>
+      	<dependency groupId="com.pholser" artifactId="junit-quickcheck-generators"/>
+      	<dependency groupId="com.pholser" artifactId="junit-quickcheck-guava"/>
       </artifact:pom>
 
       <!-- now the pom's for artifacts being deployed to Maven Central -->
