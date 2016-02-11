@@ -19,6 +19,7 @@ import calendar
 import math
 import re
 import sys
+import os
 import platform
 import wcwidth
 
@@ -32,6 +33,27 @@ is_win = platform.system() == 'Windows'
 
 unicode_controlchars_re = re.compile(r'[\x00-\x31\x7f-\xa0]')
 controlchars_re = re.compile(r'[\x00-\x31\x7f-\xff]')
+
+# Timezone conversion is handled using pytz and will be used to show timestamps in the
+# clients local timezone. This is an optional feature in case pytz isn't available.
+local_pytz_timezone = None
+try:
+    import pytz
+    # Figuring out a computer's timezone in a cross-platform way is non-trivial ,
+    # so we try to leave this task to tzlocal (https://github.com/regebro/tzlocal)
+    try:
+        from tzlocal import get_localzone
+        local_pytz_timezone = get_localzone()
+    except ImportError:
+        # You should not need to set a TZ env value on properly configured systems.
+        # If you do, we try to use this instead when tzlocal isn't available and try to
+        # create a pytz timezone from that.
+        if 'TZ' in os.environ:
+            try: local_pytz_timezone = pytz.timezone(os.environ['TZ'])
+            except: pass
+
+except ImportError:
+    pass
 
 
 def _show_control_chars(match):
@@ -241,8 +263,10 @@ def format_value_timestamp(val, colormap, date_time_format, quote=False, **_):
 
 
 def strftime(time_format, seconds):
-    tzless_dt = datetime_from_timestamp(seconds)
-    return tzless_dt.replace(tzinfo=UTC()).strftime(time_format)
+    ret_dt = datetime_from_timestamp(seconds).replace(tzinfo=UTC())
+    if local_pytz_timezone:
+        ret_dt = ret_dt.astimezone(local_pytz_timezone)
+    return ret_dt.strftime(time_format)
 
 
 @formatter_for('Date')
