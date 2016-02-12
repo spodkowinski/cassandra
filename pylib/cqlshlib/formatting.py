@@ -19,7 +19,6 @@ import calendar
 import math
 import re
 import sys
-import os
 import platform
 import wcwidth
 
@@ -33,27 +32,6 @@ is_win = platform.system() == 'Windows'
 
 unicode_controlchars_re = re.compile(r'[\x00-\x31\x7f-\xa0]')
 controlchars_re = re.compile(r'[\x00-\x31\x7f-\xff]')
-
-# Timezone conversion is handled using pytz and will be used to show timestamps in the
-# clients local timezone. This is an optional feature in case pytz isn't available.
-local_pytz_timezone = None
-try:
-    import pytz
-    # Figuring out a computer's timezone in a cross-platform way is non-trivial ,
-    # so we try to leave this task to tzlocal (https://github.com/regebro/tzlocal)
-    try:
-        from tzlocal import get_localzone
-        local_pytz_timezone = get_localzone()
-    except ImportError:
-        # You should not need to set a TZ env value on properly configured systems.
-        # If you do, we try to use this instead when tzlocal isn't available and try to
-        # create a pytz timezone from that.
-        if 'TZ' in os.environ:
-            try: local_pytz_timezone = pytz.timezone(os.environ['TZ'])
-            except: pass
-
-except ImportError:
-    pass
 
 
 def _show_control_chars(match):
@@ -129,10 +107,12 @@ if platform.system() == 'Windows':
 
 class DateTimeFormat():
 
-    def __init__(self, timestamp_format=DEFAULT_TIMESTAMP_FORMAT, date_format=DEFAULT_DATE_FORMAT, nanotime_format=DEFAULT_NANOTIME_FORMAT):
+    def __init__(self, timestamp_format=DEFAULT_TIMESTAMP_FORMAT, date_format=DEFAULT_DATE_FORMAT,
+                 nanotime_format=DEFAULT_NANOTIME_FORMAT, timezone=None):
         self.timestamp_format = timestamp_format
         self.date_format = date_format
         self.nanotime_format = nanotime_format
+        self.timezone = timezone
 
 
 def format_value_default(val, colormap, **_):
@@ -256,16 +236,16 @@ formatter_for('int')(format_integer_type)
 
 @formatter_for('datetime')
 def format_value_timestamp(val, colormap, date_time_format, quote=False, **_):
-    bval = strftime(date_time_format.timestamp_format, calendar.timegm(val.utctimetuple()))
+    bval = strftime(date_time_format.timestamp_format, calendar.timegm(val.utctimetuple()), timezone=date_time_format.timezone)
     if quote:
         bval = "'%s'" % bval
     return colorme(bval, colormap, 'timestamp')
 
 
-def strftime(time_format, seconds):
+def strftime(time_format, seconds, timezone=None):
     ret_dt = datetime_from_timestamp(seconds).replace(tzinfo=UTC())
-    if local_pytz_timezone:
-        ret_dt = ret_dt.astimezone(local_pytz_timezone)
+    if timezone:
+        ret_dt = ret_dt.astimezone(timezone)
     return ret_dt.strftime(time_format)
 
 
