@@ -24,6 +24,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Set;
@@ -41,6 +43,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Predicates;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 /**
@@ -155,12 +163,20 @@ public final class SSLFactory
         return ctx;
     }
 
-    private static String[] filterCipherSuites(String[] supported, String[] desired)
+    @VisibleForTesting
+    static String[] filterCipherSuites(String[] supported, String[] desired)
     {
-        Set<String> des = Sets.newHashSet(desired);
-        Set<String> toReturn = Sets.intersection(Sets.newHashSet(supported), des);
-        if (des.size() > toReturn.size())
-            logger.warn("Filtering out {} as it isnt supported by the socket", StringUtils.join(Sets.difference(des, toReturn), ","));
-        return toReturn.toArray(new String[toReturn.size()]);
+        if (supported == desired || (supported.length == desired.length && Arrays.equals(supported, desired)))
+            return desired;
+        ImmutableList<String> ldesired = ImmutableList.copyOf(desired);
+        ImmutableSet<String> ssupported = ImmutableSet.copyOf(supported);
+        ImmutableList<String> lret = ImmutableList.copyOf(Iterables.filter(ldesired, Predicates.in(ssupported)));
+        String[] ret = lret.toArray(new String[lret.size()]);
+        if (desired.length > ret.length && logger.isWarnEnabled())
+        {
+            Iterable<String> missing = Iterables.filter(ldesired, Predicates.not(Predicates.in(lret)));
+            logger.warn("Filtering out {} as it isn't supported by the socket", Iterables.toString(missing));
+        }
+        return ret;
     }
 }
