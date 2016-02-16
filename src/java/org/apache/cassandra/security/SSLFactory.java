@@ -57,6 +57,8 @@ public final class SSLFactory
         SSLContext ctx = createSSLContext(options, true);
         SSLServerSocket serverSocket = (SSLServerSocket)ctx.getServerSocketFactory().createServerSocket();
         serverSocket.setReuseAddress(true);
+        String[] suits = filterCipherSuites(serverSocket.getSupportedCipherSuites(), options.cipher_suites);
+        serverSocket.setEnabledCipherSuites(suits);
         serverSocket.setNeedClientAuth(options.require_client_auth);
         serverSocket.bind(new InetSocketAddress(address, port), 500);
         return serverSocket;
@@ -67,6 +69,8 @@ public final class SSLFactory
     {
         SSLContext ctx = createSSLContext(options, true);
         SSLSocket socket = (SSLSocket) ctx.getSocketFactory().createSocket(address, port, localAddress, localPort);
+        String[] suits = filterCipherSuites(socket.getSupportedCipherSuites(), options.cipher_suites);
+        socket.setEnabledCipherSuites(suits);
         return socket;
     }
 
@@ -75,6 +79,8 @@ public final class SSLFactory
     {
         SSLContext ctx = createSSLContext(options, true);
         SSLSocket socket = (SSLSocket) ctx.getSocketFactory().createSocket(address, port);
+        String[] suits = filterCipherSuites(socket.getSupportedCipherSuites(), options.cipher_suites);
+        socket.setEnabledCipherSuites(suits);
         return socket;
     }
 
@@ -83,6 +89,8 @@ public final class SSLFactory
     {
         SSLContext ctx = createSSLContext(options, true);
         SSLSocket socket = (SSLSocket) ctx.getSocketFactory().createSocket();
+        String[] suits = filterCipherSuites(socket.getSupportedCipherSuites(), options.cipher_suites);
+        socket.setEnabledCipherSuites(suits);
         return socket;
     }
 
@@ -140,5 +148,14 @@ public final class SSLFactory
             FileUtils.closeQuietly(ksf);
         }
         return ctx;
+    }
+
+    private static String[] filterCipherSuites(String[] supported, String[] desired)
+    {
+        Set<String> des = Sets.newHashSet(desired);
+        Set<String> toReturn = Sets.intersection(Sets.newHashSet(supported), des);
+        if (des.size() > toReturn.size())
+            logger.warn("Filtering out {} as it isnt supported by the socket", StringUtils.join(Sets.difference(des, toReturn), ","));
+        return toReturn.toArray(new String[toReturn.size()]);
     }
 }

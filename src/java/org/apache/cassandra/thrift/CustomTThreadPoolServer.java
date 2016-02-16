@@ -245,7 +245,7 @@ public class CustomTThreadPoolServer extends TServer
                 if (clientEnc.enabled)
                 {
                     logger.info("enabling encrypted thrift connections between client and server");
-                    TSSLTransportParameters params = new TSSLTransportParameters(clientEnc.protocol, null);
+                    TSSLTransportParameters params = new TSSLTransportParameters(clientEnc.protocol, clientEnc.cipher_suites);
                     params.setKeyStore(clientEnc.keystore, clientEnc.keystore_password);
                     if (clientEnc.require_client_auth)
                     {
