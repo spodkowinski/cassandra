@@ -24,11 +24,10 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Enumeration;
-import java.util.Set;
+import java.util.List;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -39,16 +38,12 @@ import javax.net.ssl.TrustManagerFactory;
 
 import org.apache.cassandra.config.EncryptionOptions;
 import org.apache.cassandra.io.util.FileUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicates;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 /**
@@ -163,18 +158,16 @@ public final class SSLFactory
         return ctx;
     }
 
-    @VisibleForTesting
-    static String[] filterCipherSuites(String[] supported, String[] desired)
+    public static String[] filterCipherSuites(String[] supported, String[] desired)
     {
-        if (supported == desired || (supported.length == desired.length && Arrays.equals(supported, desired)))
+        if (Arrays.equals(supported, desired))
             return desired;
-        ImmutableList<String> ldesired = ImmutableList.copyOf(desired);
+        List<String> ldesired = Arrays.asList(desired);
         ImmutableSet<String> ssupported = ImmutableSet.copyOf(supported);
-        ImmutableList<String> lret = ImmutableList.copyOf(Iterables.filter(ldesired, Predicates.in(ssupported)));
-        String[] ret = lret.toArray(new String[lret.size()]);
+        String[] ret = Iterables.toArray(Iterables.filter(ldesired, Predicates.in(ssupported)), String.class);
         if (desired.length > ret.length && logger.isWarnEnabled())
         {
-            Iterable<String> missing = Iterables.filter(ldesired, Predicates.not(Predicates.in(lret)));
+            Iterable<String> missing = Iterables.filter(ldesired, Predicates.not(Predicates.in(Sets.newHashSet(ret))));
             logger.warn("Filtering out {} as it isn't supported by the socket", Iterables.toString(missing));
         }
         return ret;
