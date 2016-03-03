@@ -1117,6 +1117,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 }
                 memtable.cfs.replaceFlushed(memtable, sstables);
                 reclaim(memtable);
+                memtable.cfs.compactionStrategyManager.compactionLogger.flush(sstables);
                 logger.debug("Flushed to {} ({} sstables, {} bytes), biggest {} bytes, smallest {} bytes", sstables, sstables.size(), totalBytesOnDisk, maxBytesOnDisk, minBytesOnDisk);
             }
             // signal the post-flush we've done our work

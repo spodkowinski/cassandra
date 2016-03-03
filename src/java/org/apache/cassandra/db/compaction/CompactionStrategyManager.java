@@ -21,6 +21,7 @@ package org.apache.cassandra.db.compaction;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.google.common.collect.Iterables;
 import org.apache.cassandra.index.Index;
@@ -59,6 +60,7 @@ import org.apache.cassandra.service.StorageService;
 public class CompactionStrategyManager implements INotificationConsumer
 {
     private static final Logger logger = LoggerFactory.getLogger(CompactionStrategyManager.class);
+    public final CompactionLogger compactionLogger;
     private final ColumnFamilyStore cfs;
     private volatile List<AbstractCompactionStrategy> repaired = new ArrayList<>();
     private volatile List<AbstractCompactionStrategy> unrepaired = new ArrayList<>();
@@ -80,6 +82,7 @@ public class CompactionStrategyManager implements INotificationConsumer
         cfs.getTracker().subscribe(this);
         logger.trace("{} subscribed to the data tracker.", this);
         this.cfs = cfs;
+        this.compactionLogger = new CompactionLogger(cfs, this);
         reload(cfs.metadata);
         params = cfs.metadata.params.compaction;
         locations = getDirectories().getWriteableLocations();
@@ -142,6 +145,10 @@ public class CompactionStrategyManager implements INotificationConsumer
         }
         repaired.forEach(AbstractCompactionStrategy::startup);
         unrepaired.forEach(AbstractCompactionStrategy::startup);
+        if (Stream.concat(repaired.stream(), unrepaired.stream()).anyMatch(cs -> cs.logAll))
+        {
+            compactionLogger.enable();
+        }
     }
 
     /**
@@ -151,7 +158,7 @@ public class CompactionStrategyManager implements INotificationConsumer
      * @param sstable
      * @return
      */
-    private AbstractCompactionStrategy getCompactionStrategyFor(SSTableReader sstable)
+    public AbstractCompactionStrategy getCompactionStrategyFor(SSTableReader sstable)
     {
         int index = getCompactionStrategyIndex(cfs, getDirectories(), sstable);
         if (sstable.isRepaired())
@@ -203,6 +210,7 @@ public class CompactionStrategyManager implements INotificationConsumer
         isActive = false;
         repaired.forEach(AbstractCompactionStrategy::shutdown);
         unrepaired.forEach(AbstractCompactionStrategy::shutdown);
+        compactionLogger.disable();
     }
 
     public synchronized void maybeReload(CFMetaData metadata)

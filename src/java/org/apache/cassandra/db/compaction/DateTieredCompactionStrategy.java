@@ -32,6 +32,9 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.utils.Pair;
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.node.JsonNodeFactory;
+import org.codehaus.jackson.node.ObjectNode;
 
 import static com.google.common.collect.Iterables.filter;
 
@@ -451,6 +454,29 @@ public class DateTieredCompactionStrategy extends AbstractCompactionStrategy
         uncheckedOptions = SizeTieredCompactionStrategyOptions.validateOptions(options, uncheckedOptions);
 
         return uncheckedOptions;
+    }
+
+    public CompactionLogger.Strategy strategyLogger() {
+        return new CompactionLogger.Strategy()
+        {
+            public JsonNode sstable(SSTableReader sstable)
+            {
+                ObjectNode node = JsonNodeFactory.instance.objectNode();
+                node.put("min_timestamp", sstable.getMinTimestamp());
+                node.put("max_timestamp", sstable.getMaxTimestamp());
+                return node;
+            }
+
+            public JsonNode options()
+            {
+                ObjectNode node = JsonNodeFactory.instance.objectNode();
+                node.put(DateTieredCompactionStrategyOptions.BASE_TIME_KEY,
+                         DateTieredCompactionStrategy.this.options.baseTime);
+                node.put(DateTieredCompactionStrategyOptions.MAX_WINDOW_SIZE_KEY,
+                         DateTieredCompactionStrategy.this.options.maxWindowSize);
+                return node;
+            }
+        };
     }
 
     public String toString()
