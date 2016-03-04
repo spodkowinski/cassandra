@@ -59,6 +59,10 @@
 
   <logger name="org.apache.hadoop" level="WARN"/>
 
+  <logger name="junit-quickcheck.seed-reporting" level="DEBUG">
+    <appender-ref ref="ASYNC" />
+  </logger>
+
   <!-- Do not change the name of this appender. LogbackStatusListener uses the thread name
        tied to the appender name to know when to write to real stdout/stderr vs forwarding to logback -->
   <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
