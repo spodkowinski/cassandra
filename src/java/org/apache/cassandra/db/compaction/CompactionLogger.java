@@ -212,6 +212,19 @@ public class CompactionLogger
         }
     }
 
+    public void pending(AbstractCompactionStrategy strategy, int remaining)
+    {
+        if (enabled.get())
+        {
+            ObjectNode node = json.objectNode();
+            node.put("type", "pending");
+            describe(node);
+            node.put("strategy", getId(strategy));
+            node.put("pending", remaining);
+            serializer.write(node);
+        }
+    }
+
     private static class CompactionLogSerializer
     {
         private static final String logDirectory = System.getProperty("cassandra.logdir", ".");

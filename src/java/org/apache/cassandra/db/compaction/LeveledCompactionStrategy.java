@@ -211,7 +211,9 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy
 
     public int getEstimatedRemainingTasks()
     {
-        return manifest.getEstimatedTasks();
+        int n = manifest.getEstimatedTasks();
+        cfs.getCompactionStrategyManager().compactionLogger.pending(this, n);
+        return n;
     }
 
     public long getMaxSSTableBytes()

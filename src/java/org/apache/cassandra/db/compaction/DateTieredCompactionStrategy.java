@@ -345,6 +345,7 @@ public class DateTieredCompactionStrategy extends AbstractCompactionStrategy
                     n += Math.ceil((double)stcsBucket.size() / cfs.getMaximumCompactionThreshold());
         }
         estimatedRemainingTasks = n;
+        cfs.getCompactionStrategyManager().compactionLogger.pending(this, n);
     }
 
 
