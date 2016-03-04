@@ -113,6 +113,18 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
      */
     public static List<SSTableReader> mostInterestingBucket(List<List<SSTableReader>> buckets, int minThreshold, int maxThreshold)
     {
+        List<Pair<List<SSTableReader>, Double>> pairs = prunedBucketsAndHotness(buckets, minThreshold, maxThreshold);
+
+        if (pairs.isEmpty())
+            return Collections.emptyList();
+
+        Pair<List<SSTableReader>, Double> hottest = Collections.max(pairs, bucketsByHotnessComparator);
+        return hottest.left;
+    }
+
+    @VisibleForTesting
+    static List<Pair<List<SSTableReader>, Double>> prunedBucketsAndHotness(List<List<SSTableReader>> buckets, int minThreshold, int maxThreshold)
+    {
         // skip buckets containing less than minThreshold sstables, and limit other buckets to maxThreshold sstables
         final List<Pair<List<SSTableReader>, Double>> prunedBucketsAndHotness = new ArrayList<>(buckets.size());
         for (List<SSTableReader> bucket : buckets)
@@ -121,11 +133,7 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
             if (bucketAndHotness != null && bucketAndHotness.left.size() >= minThreshold)
                 prunedBucketsAndHotness.add(bucketAndHotness);
         }
-        if (prunedBucketsAndHotness.isEmpty())
-            return Collections.emptyList();
-
-        Pair<List<SSTableReader>, Double> hottest = Collections.max(prunedBucketsAndHotness, bucketsByHotnessComparator);
-        return hottest.left;
+        return prunedBucketsAndHotness;
     }
 
     /**
