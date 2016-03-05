@@ -46,14 +46,9 @@ public class ColumnFamilyStoreGenerator extends Generator<ColumnFamilyStore>
     private double tombstonesRatio = (Double)Reflection.defaultValueOf(TombstonesRatio.class, "ratio");
     private boolean noTombstones = false;
 
-    public ColumnFamilyStoreGenerator(Class<ColumnFamilyStore> type)
+    public ColumnFamilyStoreGenerator()
     {
-        super(type);
-    }
-
-    public ColumnFamilyStoreGenerator(List<Class<ColumnFamilyStore>> types)
-    {
-        super(types);
+        super(ColumnFamilyStore.class);
     }
 
     public ColumnFamilyStore generate(SourceOfRandomness rnd, GenerationStatus generationStatus)

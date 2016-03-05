@@ -38,14 +38,10 @@ import static org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy.va
 
 public class SizeTiredCompactionSettingGenerator extends Generator<SizeTiredCompactionSetting>
 {
-    public SizeTiredCompactionSettingGenerator(Class<SizeTiredCompactionSetting> type)
-    {
-        super(type);
-    }
 
-    public SizeTiredCompactionSettingGenerator(List<Class<SizeTiredCompactionSetting>> types)
+    public SizeTiredCompactionSettingGenerator()
     {
-        super(types);
+        super(SizeTiredCompactionSetting.class);
     }
 
     public SizeTiredCompactionSetting generate(SourceOfRandomness rnd, GenerationStatus generationStatus)

@@ -25,7 +25,6 @@ import com.google.common.collect.ImmutableSet;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 
-import com.pholser.junit.quickcheck.From;
 import com.pholser.junit.quickcheck.Property;
 import com.pholser.junit.quickcheck.runner.JUnitQuickcheck;
 import org.apache.cassandra.SchemaLoader;
@@ -53,8 +52,7 @@ public class SizeTiredCompactionProperties
     }
 
     @Property(trials = 50)
-    public void bucketing(@From(SizeTiredCompactionSettingGenerator.class)
-                          SizeTiredCompactionSetting setting)
+    public void bucketing(SizeTiredCompactionSetting setting)
     {
         List<List<Object>> buckets = getBuckets(setting.getSstables(),
                                                 setting.getSizeTieredOptions().bucketHigh,
@@ -76,10 +74,7 @@ public class SizeTiredCompactionProperties
     }
 
     @Property(trials = 10)
-    public void bucketsByHotness(@From(ColumnFamilyStoreGenerator.class)
-                                 ColumnFamilyStore cfs,
-                                 @From(SizeTiredCompactionSettingGenerator.class)
-                                 SizeTiredCompactionSetting settings) throws Exception
+    public void bucketsByHotness(ColumnFamilyStore cfs, SizeTiredCompactionSetting settings) throws Exception
     {
         // test thresholds and value boundaries
         List<Pair<List<SSTableReader>, Double>> buckets = getBucketsByHotness(cfs, settings);
@@ -109,8 +104,7 @@ public class SizeTiredCompactionProperties
     }
 
     @Property(trials = 3)
-    public void compactionRunEffects(@From(ColumnFamilyStoreGenerator.class)
-                                     ColumnFamilyStore cfs) throws Exception
+    public void compactionRunEffects(ColumnFamilyStore cfs) throws Exception
     {
         int before = cfs.getLiveSSTables().size();
         // trigger actual compaction
@@ -125,11 +119,7 @@ public class SizeTiredCompactionProperties
     }
 
     @Property(trials = 3)
-    public void bucketsHotnessRelation(@From(ColumnFamilyStoreGenerator.class)
-                                       ColumnFamilyStore cfs1,
-                                       @From(ColumnFamilyStoreGenerator.class)
-                                       ColumnFamilyStore cfs2,
-                                       @From(SizeTiredCompactionSettingGenerator.class)
+    public void bucketsHotnessRelation(ColumnFamilyStore cfs1, ColumnFamilyStore cfs2,
                                        SizeTiredCompactionSetting settings) throws Exception
     {
         List<Pair<List<SSTableReader>, Double>> buckets1 = getBucketsByHotness(cfs1, settings);
