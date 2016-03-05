@@ -34,5 +34,5 @@ import com.pholser.junit.quickcheck.generator.GeneratorConfiguration;
 @GeneratorConfiguration
 public @interface TombstonesRatio
 {
-    double ratio() default 0.1;
+    double ratio() default 0.15;
 }

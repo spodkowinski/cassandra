@@ -27,6 +27,7 @@ import com.google.common.collect.ImmutableMap;
 
 import com.pholser.junit.quickcheck.generator.GenerationStatus;
 import com.pholser.junit.quickcheck.generator.Generator;
+import com.pholser.junit.quickcheck.internal.Reflection;
 import com.pholser.junit.quickcheck.random.SourceOfRandomness;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.db.ColumnFamilyStore;
@@ -42,7 +43,7 @@ public class ColumnFamilyStoreGenerator extends Generator<ColumnFamilyStore>
 {
 
 
-    private double tombstonesRatio = 0.15;
+    private double tombstonesRatio = (Double)Reflection.defaultValueOf(TombstonesRatio.class, "ratio");
     private boolean noTombstones = false;
 
     public ColumnFamilyStoreGenerator(Class<ColumnFamilyStore> type)
