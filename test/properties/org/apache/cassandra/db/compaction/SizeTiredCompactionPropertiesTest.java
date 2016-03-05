@@ -26,6 +26,7 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 
 import com.pholser.junit.quickcheck.Property;
+import com.pholser.junit.quickcheck.generator.Size;
 import com.pholser.junit.quickcheck.runner.JUnitQuickcheck;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.db.ColumnFamilyStore;
@@ -42,7 +43,7 @@ import static org.junit.Assert.assertTrue;
 
 
 @RunWith(JUnitQuickcheck.class)
-public class SizeTiredCompactionProperties
+public class SizeTiredCompactionPropertiesTest
 {
 
     @BeforeClass
@@ -116,6 +117,14 @@ public class SizeTiredCompactionProperties
         // todo: number of keys
         // number of tombstones
         // data size
+    }
+
+
+    @Property(trials = 3)
+    public void parallelCompactionRunEffects(@Size(min=12, max=12) List<ColumnFamilyStore> cfss) throws Exception
+    {
+        cfss.stream().parallel().forEach(cfs -> cfs.enableAutoCompaction(true));
+
     }
 
     @Property(trials = 3)

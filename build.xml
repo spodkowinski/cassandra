@@ -64,6 +64,7 @@
     <property name="test.long.src" value="${test.dir}/long"/>
     <property name="test.burn.src" value="${test.dir}/burn"/>
     <property name="test.microbench.src" value="${test.dir}/microbench"/>
+    <property name="test.props.src" value="${test.dir}/properties"/>
     <property name="dist.dir" value="${build.dir}/dist"/>
     <property name="tmp.dir" value="${java.io.tmpdir}"/>
 	
@@ -97,6 +98,7 @@
     <property name="test.timeout" value="240000" />
     <property name="test.long.timeout" value="600000" />
     <property name="test.burn.timeout" value="600000" />
+    <property name="test.props.timeout" value="600000" />
 
     <!-- default for cql tests. Can be override by -Dcassandra.test.use_prepared=false -->
     <property name="cassandra.test.use_prepared" value="true" />
@@ -1129,6 +1131,7 @@
      <src path="${test.long.src}"/>
      <src path="${test.burn.src}"/>
      <src path="${test.microbench.src}"/>
+     <src path="${test.props.src}"/>
     </javac>
 
     <!-- Non-java resources needed by the test suite -->
@@ -1373,6 +1376,11 @@
     </testmacro>
   </target>
 
+  <target name="properties-test" depends="build-test" description="Execute properties based tests">
+     <testmacro inputdir="${test.props.src}"
+        timeout="${test.props.timeout}"/>
+  </target>
+
   <target name="cql-test" depends="build-test" description="Execute CQL tests">
     <sequential>
       <echo message="running CQL tests"/>
@@ -1444,7 +1452,7 @@
   </target>
 
   <target name="test-all" 
-          depends="eclipse-warnings,test,long-test,test-compression,test-clientutil-jar" 
+          depends="eclipse-warnings,test,properties-test,long-test,test-compression,test-clientutil-jar" 
           description="Run all tests except for those under test-burn" />
   
   <!-- Use JaCoCo ant extension without needing externally saved lib -->
@@ -1714,6 +1722,7 @@
   <classpathentry kind="src" path="interface/thrift/gen-java"/>
   <classpathentry kind="src" output="build/test/classes" path="test/unit"/>
   <classpathentry kind="src" output="build/test/classes" path="test/long"/>
+  <classpathentry kind="src" output="build/test/classes" path="test/properties"/>
   <classpathentry kind="src" output="build/test/classes" path="test/resources" />
   <classpathentry kind="src" path="tools/stress/src"/>
   <classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>

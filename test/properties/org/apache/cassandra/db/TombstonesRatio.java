@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.cassandra.db.compaction;
+package org.apache.cassandra.db;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -26,9 +26,6 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 import com.pholser.junit.quickcheck.generator.GeneratorConfiguration;
 
-/**
- * Created by spod on 04/03/16.
- */
 @Target({ PARAMETER, FIELD, ANNOTATION_TYPE, TYPE_USE})
 @Retention(RUNTIME)
 @GeneratorConfiguration

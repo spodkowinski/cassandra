@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.cassandra.db.compaction;
+package org.apache.cassandra.db;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
