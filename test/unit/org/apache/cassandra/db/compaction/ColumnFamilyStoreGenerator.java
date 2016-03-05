@@ -38,35 +38,38 @@ import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.Pair;
 
-public class SizeTiredCompactionCFSGenerator extends Generator<SizeTiredCompactionCFS>
+public class ColumnFamilyStoreGenerator extends Generator<ColumnFamilyStore>
 {
 
 
-    public SizeTiredCompactionCFSGenerator(Class<SizeTiredCompactionCFS> type)
+    private double tombstonesRatio = 0.15;
+    private boolean noTombstones = false;
+
+    public ColumnFamilyStoreGenerator(Class<ColumnFamilyStore> type)
     {
         super(type);
     }
 
-    public SizeTiredCompactionCFSGenerator(List<Class<SizeTiredCompactionCFS>> types)
+    public ColumnFamilyStoreGenerator(List<Class<ColumnFamilyStore>> types)
     {
         super(types);
     }
 
-    public SizeTiredCompactionCFS generate(SourceOfRandomness rnd, GenerationStatus generationStatus)
+    public ColumnFamilyStore generate(SourceOfRandomness rnd, GenerationStatus generationStatus)
     {
 
         return generateSetting(rnd, generationStatus);
     }
 
-    public static SizeTiredCompactionCFS generateSetting(SourceOfRandomness rnd, GenerationStatus generationStatus)
+    public static ColumnFamilyStore generateSetting(SourceOfRandomness rnd, GenerationStatus generationStatus)
     {
 
         long ts = System.nanoTime();
         String cfname = "Standard1_" + generationStatus.attempts() + '_' + ts;
         String ksname = "SizeTiredCompactionCFS_" + generationStatus.attempts() + '_' + ts;
         Map<String, String> thresholds =
-        ImmutableMap.of(CompactionParams.Option.MIN_THRESHOLD.toString(), Integer.toString(4),
-                        CompactionParams.Option.MAX_THRESHOLD.toString(), Integer.toString(32));
+        ImmutableMap.of(CompactionParams.Option.MIN_THRESHOLD.toString(), Integer.toString(2),
+                        CompactionParams.Option.MAX_THRESHOLD.toString(), Integer.toString(Integer.MAX_VALUE));
         SchemaLoader.createKeyspace(ksname,
                                     KeyspaceParams.simple(1),
                                     SchemaLoader.standardCFMD(ksname, cfname)
@@ -75,11 +78,9 @@ public class SizeTiredCompactionCFSGenerator extends Generator<SizeTiredCompacti
 
         SizeTiredCompactionSetting setting = SizeTiredCompactionSettingGenerator.generateSetting(rnd, generationStatus);
         Keyspace keyspace = Keyspace.open(ksname);
-        ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
+        org.apache.cassandra.db.ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();
-//        cfs.setMaximumCompactionThreshold(0);
-//        cfs.setMinimumCompactionThreshold(0);
 
         // create sstables
         for (Pair<Object, Long> sstable : setting.getSstables())
@@ -103,9 +104,26 @@ public class SizeTiredCompactionCFSGenerator extends Generator<SizeTiredCompacti
             sstable.overrideReadMeter(new RestorableMeter(v, v));
         }
 
-        int minThreshold = rnd.nextInt(0, live.size());
-        int maxThreshold = Math.min((int) (minThreshold * rnd.nextFloat(1, 3)), live.size());
+        int minThreshold = CompactionParams.DEFAULT_MIN_THRESHOLD;
+        int maxThreshold = CompactionParams.DEFAULT_MAX_THRESHOLD;
+        if (rnd.nextDouble() > .8)
+        {
+            minThreshold = Math.max(2, rnd.nextInt(0, live.size()));
+            maxThreshold = Math.min((int) (minThreshold * rnd.nextFloat(1, 3)), live.size());
+        }
+        cfs.setMinimumCompactionThreshold(minThreshold);
+        cfs.setMaximumCompactionThreshold(maxThreshold);
 
-        return new SizeTiredCompactionCFS(setting, cfs, minThreshold, maxThreshold);
+        return cfs;
+    }
+
+    public void configure(TombstonesRatio ratio)
+    {
+        this.tombstonesRatio = ratio.ratio();
+    }
+
+    public void configure(NoTombstones justno)
+    {
+        this.noTombstones = true;
     }
 }

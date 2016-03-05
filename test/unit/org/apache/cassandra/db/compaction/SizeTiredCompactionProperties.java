@@ -54,7 +54,7 @@ public class SizeTiredCompactionProperties
 
     @Property(trials = 50)
     public void bucketing(@From(SizeTiredCompactionSettingGenerator.class)
-                                    SizeTiredCompactionSetting setting)
+                          SizeTiredCompactionSetting setting)
     {
         List<List<Object>> buckets = getBuckets(setting.getSstables(),
                                                 setting.getSizeTieredOptions().bucketHigh,
@@ -76,42 +76,42 @@ public class SizeTiredCompactionProperties
     }
 
     @Property(trials = 10)
-    public void bucketsByHotness(@From(SizeTiredCompactionCFSGenerator.class)
-                                            SizeTiredCompactionCFS iteration) throws Exception
+    public void bucketsByHotness(@From(ColumnFamilyStoreGenerator.class)
+                                 ColumnFamilyStore cfs,
+                                 @From(SizeTiredCompactionSettingGenerator.class)
+                                 SizeTiredCompactionSetting settings) throws Exception
     {
         // test thresholds and value boundaries
-        List<Pair<List<SSTableReader>, Double>> buckets = getBucketsByHotness(iteration);
+        List<Pair<List<SSTableReader>, Double>> buckets = getBucketsByHotness(cfs, settings);
         int minSize = buckets.stream().mapToInt(b -> b.left.size()).min().orElse(0);
         int maxSize = buckets.stream().mapToInt(b -> b.left.size()).max().orElse(0);
 
         assertTrue(String.format("bucket must honor size thresholds (%d/%d)", minSize, maxSize),
-                   minSize >= iteration.getMinThreshold() && maxSize <= iteration.getMaxThreshold());
+                   minSize >= cfs.getMinimumCompactionThreshold() && maxSize <= cfs.getMaximumCompactionThreshold());
 
         double minHotness = buckets.stream().mapToDouble(b -> b.right).min().orElse(0);
         assertTrue("hotness value must be greater than zero", minHotness >= 0);
 
         // test rate increase -> hotness relation
-        double hotness1 = getBucketsByHotness(iteration).stream().mapToDouble(s -> s.right).sum();
+        double hotness1 = getBucketsByHotness(cfs, settings).stream().mapToDouble(s -> s.right).sum();
 
-        for (SSTableReader sstable : iteration.getColumnFamilyStore().getLiveSSTables())
+        for (SSTableReader sstable : cfs.getLiveSSTables())
         {
             // bias towards majority of sstables being cold
             RestorableMeter meter = sstable.getReadMeter();
             sstable.overrideReadMeter(new RestorableMeter(meter.fifteenMinuteRate() * 2, meter.twoHourRate() * 2));
         }
 
-        double hotness2 = getBucketsByHotness(iteration).stream().mapToDouble(s -> s.right).sum();
+        double hotness2 = getBucketsByHotness(cfs, settings).stream().mapToDouble(s -> s.right).sum();
 
         assertTrue("hotness must increase proportional with read rate",
                    (hotness1 == 0 && hotness2 == 0) || hotness2 == hotness1 * 2);
     }
 
     @Property(trials = 3)
-    public void compactionRunEffects(@From(SizeTiredCompactionCFSGenerator.class)
-                     SizeTiredCompactionCFS iteration) throws Exception
+    public void compactionRunEffects(@From(ColumnFamilyStoreGenerator.class)
+                                     ColumnFamilyStore cfs) throws Exception
     {
-
-        ColumnFamilyStore cfs = iteration.getColumnFamilyStore();
         int before = cfs.getLiveSSTables().size();
         // trigger actual compaction
         cfs.enableAutoCompaction(true);
@@ -125,22 +125,24 @@ public class SizeTiredCompactionProperties
     }
 
     @Property(trials = 3)
-    public void bucketsHotnessRelation(@From(SizeTiredCompactionCFSGenerator.class)
-                                      SizeTiredCompactionCFS iteration1,
-                                      @From(SizeTiredCompactionCFSGenerator.class)
-                                      SizeTiredCompactionCFS iteration2) throws Exception
+    public void bucketsHotnessRelation(@From(ColumnFamilyStoreGenerator.class)
+                                       ColumnFamilyStore cfs1,
+                                       @From(ColumnFamilyStoreGenerator.class)
+                                       ColumnFamilyStore cfs2,
+                                       @From(SizeTiredCompactionSettingGenerator.class)
+                                       SizeTiredCompactionSetting settings) throws Exception
     {
-        List<Pair<List<SSTableReader>, Double>> buckets1 = getBucketsByHotness(iteration1);
-        List<Pair<List<SSTableReader>, Double>> buckets2 = getBucketsByHotness(iteration2);
+        List<Pair<List<SSTableReader>, Double>> buckets1 = getBucketsByHotness(cfs1, settings);
+        List<Pair<List<SSTableReader>, Double>> buckets2 = getBucketsByHotness(cfs2, settings);
         double hotness1 = buckets1.stream().mapToDouble(s -> s.right).sum();
         int sstables1 = buckets1.stream().mapToInt(s -> s.left.size()).sum();
-        double rates1 = iteration1.getColumnFamilyStore().getLiveSSTables().stream()
-                                  .mapToDouble(s -> s.getReadMeter().fifteenMinuteRate()).sum();
+        double rates1 = cfs1.getLiveSSTables().stream()
+                            .mapToDouble(s -> s.getReadMeter().fifteenMinuteRate()).sum();
 
         double hotness2 = buckets2.stream().mapToDouble(s -> s.right).sum();
         int sstables2 = buckets2.stream().mapToInt(s -> s.left.size()).sum();
-        double rates2 = iteration2.getColumnFamilyStore().getLiveSSTables().stream()
-                                  .mapToDouble(s -> s.getReadMeter().fifteenMinuteRate()).sum();
+        double rates2 = cfs2.getLiveSSTables().stream()
+                            .mapToDouble(s -> s.getReadMeter().fifteenMinuteRate()).sum();
 
         String msg = "Greater total hotness must be based on higher number of sstables or read rates";
         if (hotness1 > hotness2)
@@ -149,19 +151,18 @@ public class SizeTiredCompactionProperties
             assertTrue(msg, sstables1 < sstables2 || rates1 < rates2);
     }
 
-    private static List<Pair<List<SSTableReader>, Double>> getBucketsByHotness(SizeTiredCompactionCFS iteration)
+    private static List<Pair<List<SSTableReader>, Double>> getBucketsByHotness(ColumnFamilyStore cfs,
+                                                                               SizeTiredCompactionSetting settings)
     {
-        ColumnFamilyStore cfs = iteration.getColumnFamilyStore();
-        SizeTiredCompactionSetting setting = iteration.getSetting();
         Iterable<SSTableReader> live = ImmutableSet.copyOf(cfs.getLiveSSTables());
 
         List<List<SSTableReader>> buckets = getBuckets(createSSTableAndLengthPairs(live),
-                                                       setting.getSizeTieredOptions().bucketHigh,
-                                                       setting.getSizeTieredOptions().bucketLow,
-                                                       setting.getSizeTieredOptions().minSSTableSize);
+                                                       settings.getSizeTieredOptions().bucketHigh,
+                                                       settings.getSizeTieredOptions().bucketLow,
+                                                       settings.getSizeTieredOptions().minSSTableSize);
 
         return SizeTieredCompactionStrategy.prunedBucketsAndHotness(buckets,
-                                                                    iteration.getMinThreshold(),
-                                                                    iteration.getMaxThreshold());
+                                                                    cfs.getMinimumCompactionThreshold(),
+                                                                    cfs.getMaximumCompactionThreshold());
     }
 }
