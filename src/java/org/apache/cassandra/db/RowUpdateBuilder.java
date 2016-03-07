@@ -138,6 +138,11 @@ public class RowUpdateBuilder
         this(new PartitionUpdate(metadata, makeKey(metadata, partitionKey), metadata.partitionColumns(), 1), timestamp, ttl, localDeletionTime, null);
     }
 
+    public RowUpdateBuilder(CFMetaData metadata, int localDeletionTime, long timestamp, int ttl, Object ... partitionKey)
+    {
+        this(new PartitionUpdate(metadata, makeKey(metadata, partitionKey), metadata.partitionColumns(), 1), timestamp, ttl, localDeletionTime, null);
+    }
+
     public RowUpdateBuilder(CFMetaData metadata, long timestamp, Mutation mutation)
     {
         this(metadata, timestamp, LivenessInfo.NO_TTL, mutation);
