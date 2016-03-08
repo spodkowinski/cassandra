@@ -18,22 +18,52 @@
 
 package org.apache.cassandra.db;
 
+import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.time.Instant;
+import java.util.Date;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 import com.pholser.junit.quickcheck.generator.GenerationStatus;
 import com.pholser.junit.quickcheck.random.SourceOfRandomness;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.AsciiType;
+import org.apache.cassandra.db.marshal.BooleanType;
 import org.apache.cassandra.db.marshal.ByteType;
+import org.apache.cassandra.db.marshal.BytesType;
+import org.apache.cassandra.db.marshal.DecimalType;
+import org.apache.cassandra.db.marshal.DoubleType;
+import org.apache.cassandra.db.marshal.FloatType;
 import org.apache.cassandra.db.marshal.InetAddressType;
+import org.apache.cassandra.db.marshal.IntegerType;
+import org.apache.cassandra.db.marshal.LongType;
+import org.apache.cassandra.db.marshal.ShortType;
+import org.apache.cassandra.db.marshal.TimestampType;
+import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.db.marshal.UUIDType;
+import org.apache.cassandra.serializers.AsciiSerializer;
+import org.apache.cassandra.serializers.BooleanSerializer;
+import org.apache.cassandra.serializers.ByteSerializer;
+import org.apache.cassandra.serializers.BytesSerializer;
+import org.apache.cassandra.serializers.DecimalSerializer;
+import org.apache.cassandra.serializers.DoubleSerializer;
+import org.apache.cassandra.serializers.FloatSerializer;
+import org.apache.cassandra.serializers.InetAddressSerializer;
+import org.apache.cassandra.serializers.LongSerializer;
+import org.apache.cassandra.serializers.ShortSerializer;
+import org.apache.cassandra.serializers.TimestampSerializer;
+import org.apache.cassandra.serializers.UTF8Serializer;
+import org.apache.cassandra.serializers.UUIDSerializer;
 
 
 class GeneratedColumn
 {
     String name;
     AbstractType type;
-    Supplier<?> value;
+    Supplier<ByteBuffer> value;
 
     private GeneratedColumn(SourceOfRandomness rnd, GenerationStatus generationStatus)
     {
@@ -58,13 +88,13 @@ class GeneratedColumn
                 return InetAddressType.instance;
             }
 
-            Supplier<InetAddress> value(SourceOfRandomness rnd)
+            Supplier<ByteBuffer> value(SourceOfRandomness rnd)
             {
                 return () -> {
                     try
                     {
-                        return InetAddress.getByAddress(new byte[]{ 10, (byte) rnd.nextInt(),
-                                                                    (byte) rnd.nextInt(), (byte) rnd.nextInt() });
+                        return InetAddressSerializer.instance.serialize(
+                            InetAddress.getByAddress(new byte[]{ 10, (byte) rnd.nextInt(), (byte) rnd.nextInt(), (byte) rnd.nextInt() }));
                     }
                     catch (UnknownHostException e)
                     {
@@ -81,14 +111,179 @@ class GeneratedColumn
                 return ByteType.instance;
             }
 
-            Supplier<?> value(SourceOfRandomness rnd)
+            Supplier<ByteBuffer> value(SourceOfRandomness rnd)
             {
-                return () -> (byte) rnd.nextInt();
+                return () -> ByteSerializer.instance.serialize((byte) rnd.nextInt());
+            }
+        },
+
+        TLongType
+        {
+            LongType instance()
+            {
+                return LongType.instance;
+            }
+
+            Supplier<ByteBuffer> value(SourceOfRandomness rnd)
+            {
+                return () -> LongSerializer.instance.serialize(rnd.nextLong());
+            }
+        },
+
+        TUTF8Type
+        {
+            AbstractType instance()
+            {
+                return UTF8Type.instance;
+            }
+
+            Supplier<ByteBuffer> value(SourceOfRandomness rnd)
+            {
+
+                StringBuilder builder = new StringBuilder();
+                for(int i = 0; i < rnd.nextInt(1, rnd.nextInt(1, 80)); i++)
+                    builder.appendCodePoint(rnd.nextInt(0, Character.MIN_SURROGATE - 1));
+
+                return () -> UTF8Serializer.instance.serialize(builder.toString());
+            }
+        },
+
+        TIntegerType
+        {
+            AbstractType instance()
+            {
+                return IntegerType.instance;
+            }
+
+            Supplier<ByteBuffer> value(SourceOfRandomness rnd)
+            {
+                return () -> ByteSerializer.instance.serialize((byte)rnd.nextInt());
+            }
+        },
+
+        TDecimalType
+        {
+            AbstractType instance()
+            {
+                return DecimalType.instance;
+            }
+
+            Supplier<ByteBuffer> value(SourceOfRandomness rnd)
+            {
+                return () -> DecimalSerializer.instance.serialize(BigDecimal.valueOf(rnd.nextLong()));
+            }
+        },
+
+        TTimestampType
+        {
+            AbstractType instance()
+            {
+                return TimestampType.instance;
+            }
+
+            Supplier<ByteBuffer> value(SourceOfRandomness rnd)
+            {
+                return () -> TimestampSerializer.instance.serialize(Date.from(Instant.ofEpochMilli(rnd.nextLong())));
+            }
+        },
+
+        TDoubleType
+        {
+            AbstractType instance()
+            {
+                return DoubleType.instance;
+            }
+
+            Supplier<ByteBuffer> value(SourceOfRandomness rnd)
+            {
+                return () -> DoubleSerializer.instance.serialize(rnd.nextDouble());
+            }
+        },
+
+        TBytesType
+        {
+            AbstractType instance()
+            {
+                return BytesType.instance;
+            }
+
+            Supplier<ByteBuffer> value(SourceOfRandomness rnd)
+            {
+                return () -> BytesSerializer.instance.serialize(ByteBuffer.wrap(rnd.nextBytes(rnd.nextInt(0, 100))));
+            }
+        },
+
+        TBooleanType
+        {
+            AbstractType instance()
+            {
+                return BooleanType.instance;
+            }
+
+            Supplier<ByteBuffer> value(SourceOfRandomness rnd)
+            {
+                return () -> BooleanSerializer.instance.serialize(rnd.nextBoolean());
+            }
+        },
+
+        TShortType
+        {
+            AbstractType instance()
+            {
+                return ShortType.instance;
+            }
+
+            Supplier<ByteBuffer> value(SourceOfRandomness rnd)
+            {
+                return () -> ShortSerializer.instance.serialize(rnd.nextShort(Short.MIN_VALUE, Short.MAX_VALUE));
+            }
+        },
+
+        TUUIDType
+        {
+            AbstractType instance()
+            {
+                return UUIDType.instance;
+            }
+
+            Supplier<ByteBuffer> value(SourceOfRandomness rnd)
+            {
+                return () -> UUIDSerializer.instance.serialize(UUID.nameUUIDFromBytes(rnd.nextBytes(20)));
+            }
+        },
+
+        TFloatType
+        {
+            AbstractType instance()
+            {
+                return FloatType.instance;
+            }
+
+            Supplier<ByteBuffer> value(SourceOfRandomness rnd)
+            {
+                return () -> FloatSerializer.instance.serialize(rnd.nextFloat());
+            }
+        },
+
+        TAsciiType
+        {
+            AbstractType instance()
+            {
+                return AsciiType.instance;
+            }
+
+            Supplier<ByteBuffer> value(SourceOfRandomness rnd)
+            {
+                StringBuilder builder = new StringBuilder();
+                for(int i = 0; i < rnd.nextInt(1, rnd.nextInt(1, 80)); i++)
+                    builder.appendCodePoint(rnd.nextByte((byte)1, (byte)127));
+
+                return () -> AsciiSerializer.instance.serialize(builder.toString());
             }
         };
 
         abstract AbstractType instance();
 
-        abstract Supplier<?> value(SourceOfRandomness rnd);
+        abstract Supplier<ByteBuffer> value(SourceOfRandomness rnd);
     }
 }
