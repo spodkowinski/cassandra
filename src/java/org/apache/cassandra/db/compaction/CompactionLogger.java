@@ -71,7 +71,6 @@ public class CompactionLogger
     private static final CompactionLogSerializer serializer = new CompactionLogSerializer();
     private final ColumnFamilyStore cfs;
     private final CompactionStrategyManager csm;
-    private final AtomicInteger identifier = new AtomicInteger(0);
     private final Map<AbstractCompactionStrategy, String> compactionStrategyMapping = new ConcurrentHashMap<>();
     private final AtomicBoolean enabled = new AtomicBoolean(false);
 
@@ -103,7 +102,14 @@ public class CompactionLogger
 
     private String getId(AbstractCompactionStrategy strategy)
     {
-        return compactionStrategyMapping.computeIfAbsent(strategy, s -> String.valueOf(identifier.getAndIncrement()));
+        if (strategy instanceof SizeTieredCompactionStrategy)
+            return "STCS";
+        else if (strategy instanceof LeveledCompactionStrategy)
+            return "LCS";
+        else if (strategy instanceof DateTieredCompactionStrategy)
+            return "DTCS";
+        else
+            return strategy.getName();
     }
 
     private JsonNode formatSSTables(AbstractCompactionStrategy strategy)
