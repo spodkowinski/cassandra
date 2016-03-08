@@ -73,7 +73,7 @@ class GeneratedColumn
     {
         GeneratedColumn column = new GeneratedColumn(rnd, generationStatus);
         ColumnType t = ColumnType.values()[rnd.nextInt(0, ColumnType.values().length - 1)];
-        column.name = String.valueOf(rnd.nextDouble()); // TODO: string generation
+        column.name = UTF8Serializer.instance.deserialize(ColumnType.TUTF8Type.value(rnd).get());
         column.type = t.instance();
         column.value = t.value(rnd);
         return column;
