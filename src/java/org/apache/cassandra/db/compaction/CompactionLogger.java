@@ -229,7 +229,7 @@ public class CompactionLogger
 
     public void pending(AbstractCompactionStrategy strategy, int remaining)
     {
-        if (enabled.get())
+        if (enabled.get() && remaining > 0)
         {
             ObjectNode node = json.objectNode();
             node.put("type", "pending");
