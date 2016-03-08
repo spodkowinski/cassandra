@@ -21,6 +21,10 @@ package org.apache.cassandra.db.compaction;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.file.*;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -213,8 +217,10 @@ public class CompactionLogger
             ObjectNode node = json.objectNode();
             node.put("type", "compaction");
             describe(node);
-            node.put("start", String.valueOf(startTime));
-            node.put("end", String.valueOf(endTime));
+            node.put("start", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(Instant.ofEpochMilli(startTime)
+                                                                                   .atZone(ZoneId.systemDefault())));
+            node.put("end", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(Instant.ofEpochMilli(endTime)
+                                                                                 .atZone(ZoneId.systemDefault())));
             node.put("input", arrayNode(input, this::describe));
             node.put("output", arrayNode(output, this::describe));
             serializer.write(node);
