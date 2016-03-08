@@ -40,6 +40,8 @@ import org.codehaus.jackson.node.ArrayNode;
 import org.codehaus.jackson.node.JsonNodeFactory;
 import org.codehaus.jackson.node.ObjectNode;
 
+import static com.google.common.io.Files.getNameWithoutExtension;
+
 public class CompactionLogger
 {
     public interface Strategy
@@ -128,6 +130,7 @@ public class CompactionLogger
         ObjectNode node = json.objectNode();
         node.put("generation", sstable.descriptor.generation);
         node.put("size", sstable.onDiskLength());
+        node.put("file", getNameWithoutExtension(sstable.getFilename()));
         JsonNode logResult = strategy.strategyLogger().sstable(sstable);
         if (logResult != null)
             node.put("details", logResult);
