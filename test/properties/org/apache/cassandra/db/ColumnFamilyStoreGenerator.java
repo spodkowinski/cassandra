@@ -35,6 +35,7 @@ import com.pholser.junit.quickcheck.generator.Generator;
 import com.pholser.junit.quickcheck.internal.Reflection;
 import com.pholser.junit.quickcheck.random.SourceOfRandomness;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy;
 import org.apache.cassandra.db.marshal.TimeUUIDType;
 import org.apache.cassandra.dht.ByteOrderedPartitioner;
@@ -86,26 +87,26 @@ public class ColumnFamilyStoreGenerator extends Generator<ColumnFamilyStore>
         List<GeneratedColumn> pkColumns = columns(rnd, generationStatus, rnd.nextInt(1, 4));
         for (GeneratedColumn col : pkColumns)
         {
-            cfmBuilder = cfmBuilder.addPartitionKey(col.name, col.type);
+            cfmBuilder = cfmBuilder.addPartitionKey(ColumnIdentifier.getInterned(col.name, true), col.type);
         }
 
         List<GeneratedColumn> clusteringColumns = columns(rnd, generationStatus, rnd.nextInt(1, 15));
         for (GeneratedColumn col : clusteringColumns)
         {
-            cfmBuilder = cfmBuilder.addClusteringColumn(col.name, col.type);
+            cfmBuilder = cfmBuilder.addClusteringColumn(ColumnIdentifier.getInterned(col.name, true), col.type);
         }
 
         // TODO: Cannot update both static and non-static columns with the same RowUpdateBuilder object
         List<GeneratedColumn> staticColumns = Collections.emptyList(); // columns(rnd, generationStatus, rnd.nextInt(0, 3));
         for (GeneratedColumn col : staticColumns)
         {
-            cfmBuilder = cfmBuilder.addStaticColumn(col.name, col.type);
+            cfmBuilder = cfmBuilder.addStaticColumn(ColumnIdentifier.getInterned(col.name, true), col.type);
         }
 
         List<GeneratedColumn> regularColumns = columns(rnd, generationStatus, rnd.nextInt(1, 15));
         for (GeneratedColumn col : regularColumns)
         {
-            cfmBuilder = cfmBuilder.addRegularColumn(col.name, col.type);
+            cfmBuilder = cfmBuilder.addRegularColumn(ColumnIdentifier.getInterned(col.name, true), col.type);
         }
 
         CFMetaData cfm = cfmBuilder.build();
