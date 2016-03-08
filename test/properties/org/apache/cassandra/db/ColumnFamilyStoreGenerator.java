@@ -150,15 +150,15 @@ public class ColumnFamilyStoreGenerator extends Generator<ColumnFamilyStore>
             sstable.overrideReadMeter(new RestorableMeter(v, v));
         }
 
-//        int minThreshold = CompactionParams.DEFAULT_MIN_THRESHOLD;
-//        int maxThreshold = CompactionParams.DEFAULT_MAX_THRESHOLD;
-//        if (rnd.nextDouble() > .8)
-//        {
-//            minThreshold = Math.max(2, rnd.nextInt(0, live.size()));
-//            maxThreshold = Math.min((int) (minThreshold * rnd.nextFloat(1, 3)), live.size());
-//        }
-//        cfs.setMinimumCompactionThreshold(minThreshold);
-//        cfs.setMaximumCompactionThreshold(maxThreshold);
+        int minThreshold = CompactionParams.DEFAULT_MIN_THRESHOLD;
+        int maxThreshold = CompactionParams.DEFAULT_MAX_THRESHOLD;
+        if (rnd.nextDouble() > .8)
+        {
+            minThreshold = Math.max(2, rnd.nextInt(0, live.size()));
+            maxThreshold = Math.min((int) (minThreshold * rnd.nextFloat(1, 3)), live.size());
+        }
+        cfs.setMinimumCompactionThreshold(minThreshold);
+        cfs.setMaximumCompactionThreshold(maxThreshold);
 
         return cfs;
     }
