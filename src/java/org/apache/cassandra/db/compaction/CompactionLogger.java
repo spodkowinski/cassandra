@@ -263,8 +263,9 @@ public class CompactionLogger
             return new OutputStreamWriter(Files.newOutputStream(compactionLog, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE));
         }
 
-        public void write(JsonNode statement)
+        public void write(ObjectNode statement)
         {
+            statement.put("date", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(ZonedDateTime.now()));
             final String toWrite = statement.toString() + System.lineSeparator();
             loggerService.execute(() -> {
                 try
