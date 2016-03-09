@@ -60,6 +60,10 @@ public class ColumnFamilyStoreGenerator extends Generator<ColumnFamilyStore>
 
     private double tombstonesRatio = (Double) Reflection.defaultValueOf(TombstonesRatio.class, "ratio");
     private boolean noTombstones = false;
+    private int minSSTables = (Integer) Reflection.defaultValueOf(SSTables.class, "min");
+    private int maxSSTables = (Integer) Reflection.defaultValueOf(SSTables.class, "max");
+    private int minRows = (Integer) Reflection.defaultValueOf(Rows.class, "min");
+    private int maxRows = (Integer) Reflection.defaultValueOf(Rows.class, "max");
 
     public ColumnFamilyStoreGenerator()
     {
@@ -72,7 +76,7 @@ public class ColumnFamilyStoreGenerator extends Generator<ColumnFamilyStore>
         return generateSetting(rnd, generationStatus);
     }
 
-    public static ColumnFamilyStore generateSetting(SourceOfRandomness rnd, GenerationStatus generationStatus)
+    public ColumnFamilyStore generateSetting(SourceOfRandomness rnd, GenerationStatus generationStatus)
     {
 
         long ts = System.nanoTime();
@@ -129,9 +133,11 @@ public class ColumnFamilyStoreGenerator extends Generator<ColumnFamilyStore>
         cfs.disableAutoCompaction();
 
         // create sstables
-        for (int i = 0; i < 50; i++)
+        int noOfSSTables = rnd.nextInt(minSSTables, maxSSTables);
+        int noOfRows = rnd.nextInt(minRows, maxRows);
+        for (int i = 0; i < noOfSSTables; i++)
         {
-            for (int j = 0; j < 50; j++)
+            for (int j = 0; j < noOfRows; j++)
             {
                 Mutation row = row(rnd, pkColumns, clusteringColumns, regularColumns, cfs.metadata, true);
                 // commit but skip commit log
@@ -236,6 +242,18 @@ public class ColumnFamilyStoreGenerator extends Generator<ColumnFamilyStore>
     public void configure(NoTombstones justno)
     {
         this.noTombstones = true;
+    }
+
+    public void configure(SSTables sstables)
+    {
+        this.minSSTables = sstables.min();
+        this.maxSSTables = sstables.max();
+    }
+
+    public void configure(Rows rows)
+    {
+        this.minRows = rows.min();
+        this.maxRows = rows.max();
     }
 }
 
