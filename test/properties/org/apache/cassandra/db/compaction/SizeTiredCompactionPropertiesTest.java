@@ -118,15 +118,7 @@ public class SizeTiredCompactionPropertiesTest
         // number of tombstones
         // data size
     }
-
-
-    @Property(trials = 3)
-    public void parallelCompactionRunEffects(@Size(min=12, max=12) List<ColumnFamilyStore> cfss) throws Exception
-    {
-        cfss.stream().parallel().forEach(cfs -> cfs.enableAutoCompaction(true));
-
-    }
-
+    
     @Property(trials = 3)
     public void bucketsHotnessRelation(ColumnFamilyStore cfs1, ColumnFamilyStore cfs2,
                                        SizeTiredCompactionSetting settings) throws Exception
