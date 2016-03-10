@@ -78,10 +78,10 @@ public class ColumnFamilyStoreGenerator extends Generator<ColumnFamilyStore>
 
     public ColumnFamilyStore generateSetting(SourceOfRandomness rnd, GenerationStatus generationStatus)
     {
-
-        long ts = System.nanoTime();
-        String cfname = "Standard1_" + generationStatus.attempts() + '_' + ts;
-        String ksname = "SizeTiredCompactionCFS_" + generationStatus.attempts() + '_' + ts;
+        String sseed = String.valueOf(rnd.seed());
+        sseed = sseed.replace('-', 'N'); // - not allowed as part of KS name
+        String cfname = "Standard1_" + sseed + '_' + generationStatus.attempts();
+        String ksname = "SizeTiredCompactionCFS_" + sseed + '_' + generationStatus.attempts();
 
         // TODO: add support for non-cql tables
         CFMetaData.Builder cfmBuilder = CFMetaData.Builder.create(ksname, cfname,
