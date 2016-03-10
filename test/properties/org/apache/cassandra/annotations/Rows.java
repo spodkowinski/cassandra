@@ -16,28 +16,32 @@
  * limitations under the License.
  */
 
-package org.apache.cassandra.db;
+package org.apache.cassandra.annotations;
+
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 import com.pholser.junit.quickcheck.generator.GeneratorConfiguration;
 
-import static java.lang.annotation.ElementType.*;
+import static java.lang.annotation.ElementType.ANNOTATION_TYPE;
+import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.ElementType.TYPE_USE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 @Target({ PARAMETER, FIELD, ANNOTATION_TYPE, TYPE_USE})
 @Retention(RUNTIME)
 @GeneratorConfiguration
-public @interface SSTables
+public @interface Rows
 {
     /**
-     * Minimum number of SSTables to generate.
+     * Minimum number of rows to generate for each SSTable.
      */
-    int min() default 0;
+    int min() default 1;
 
     /**
-     * Maximum number of SSTables to generate.
+     * Maximum number of rows to generate for each SSTable.
      */
     int max() default 128;
 }
