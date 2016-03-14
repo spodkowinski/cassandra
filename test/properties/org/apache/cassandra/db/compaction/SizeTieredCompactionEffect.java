@@ -20,6 +20,7 @@ package org.apache.cassandra.db.compaction;
 
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.utils.Pair;
@@ -36,9 +37,9 @@ public class SizeTieredCompactionEffect
     public long minSSTableSize;
 
 
-    public void trueBeforeAndAfter(String msg, Function<SizeTiredMetrics, Boolean> check) {
-        assertTrue(msg, check.apply(before));
-        assertTrue(msg, check.apply(after));
+    public void trueBeforeAndAfter(String msg, Predicate<SizeTiredMetrics> check) {
+        assertTrue(msg, check.test(before));
+        assertTrue(msg, check.test(after));
     };
 
 
