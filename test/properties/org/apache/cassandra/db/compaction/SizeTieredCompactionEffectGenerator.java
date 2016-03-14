@@ -19,11 +19,13 @@
 package org.apache.cassandra.db.compaction;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.ToLongFunction;
+import java.util.stream.Collectors;
 
 import com.pholser.junit.quickcheck.generator.GenerationStatus;
 import com.pholser.junit.quickcheck.random.SourceOfRandomness;
@@ -32,6 +34,7 @@ import org.apache.cassandra.db.ColumnFamilyStoreGenerator;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.io.sstable.SSTable;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
+import org.apache.cassandra.utils.Pair;
 
 import static org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy.createSSTableAndLengthPairs;
 import static org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy.validateOptions;
@@ -83,14 +86,21 @@ public class SizeTieredCompactionEffectGenerator extends ColumnFamilyStoreGenera
             metrics.droppableTombstoneRatio = cfs.getDroppableTombstoneRatio();
             metrics.overlappingSSTables = cfs.getOverlappingSSTables(SSTableSet.LIVE, cfs.getLiveSSTables()).size();
 
-            // create buckets from files
-            metrics.buckets =
-                SizeTieredCompactionStrategy.<SSTableReader>getBuckets(createSSTableAndLengthPairs(cfs.getLiveSSTables()),
-                                                                   effect.bucketHighKey, effect.bucketLowKey, effect.minSSTableSize);
+            // create buckets related metrics
+            List<List<SSTableReader>> buckets =
+                SizeTieredCompactionStrategy.<SSTableReader>getBuckets(createSSTableAndLengthPairs(live),
+                                                                       effect.bucketHighKey, effect.bucketLowKey, effect.minSSTableSize);
+            metrics.numberOfBuckets = buckets.size();
+            metrics.totalBytesOnDiskInBuckets = buckets.stream()
+                                                       .flatMapToLong(bucket -> bucket.stream().mapToLong(SSTable::bytesOnDisk))
+                                                       .sum();
+            metrics.bucketSizes = buckets.stream().map(List::size).collect(Collectors.toList());
 
-            metrics.bucketsByHotness = SizeTieredCompactionStrategy.prunedBucketsAndHotness(metrics.buckets,
-                                                                                            cfs.getMinimumCompactionThreshold(),
-                                                                                            cfs.getMaximumCompactionThreshold());
+            List<Pair<List<SSTableReader>, Double>> bucketsWithHotness =
+                SizeTieredCompactionStrategy.prunedBucketsAndHotness(buckets,
+                                                                     cfs.getMinimumCompactionThreshold(),
+                                                                     cfs.getMaximumCompactionThreshold());
+            metrics.totalBucketHotness = bucketsWithHotness.stream().mapToDouble(s -> s.right).sum();
 
             // read rates for testing hotness related functions
             metrics.fifteenMinuteReadRateSum = live.stream().mapToDouble(s -> s.getReadMeter().fifteenMinuteRate()).sum();

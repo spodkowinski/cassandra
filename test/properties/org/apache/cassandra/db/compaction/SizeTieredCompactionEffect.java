@@ -45,8 +45,11 @@ public class SizeTieredCompactionEffect
 
     public static class SizeTiredMetrics extends CompactionMetrics {
 
-        public List<Pair<List<SSTableReader>, Double>> bucketsByHotness;
-        public List<List<SSTableReader>> buckets;
+
         public double fifteenMinuteReadRateSum;
+        public long totalBytesOnDiskInBuckets;
+        public double totalBucketHotness;
+        public int numberOfBuckets;
+        public List<Integer> bucketSizes;
     }
 }

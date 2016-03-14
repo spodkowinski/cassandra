@@ -27,7 +27,6 @@ import com.pholser.junit.quickcheck.Property;
 import com.pholser.junit.quickcheck.runner.JUnitQuickcheck;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.exceptions.ConfigurationException;
-import org.apache.cassandra.io.sstable.SSTable;
 
 import static org.junit.Assert.assertTrue;
 
@@ -52,20 +51,13 @@ public class SizeTieredCompactionPropertiesTest
 
         // bucketing
         effect.trueBeforeAndAfter("Number of buckets must be less or equal to number of sstables",
-                                  (metrics) -> metrics.buckets.size() <= metrics.numberOfSSTables);
+                                  (metrics) -> metrics.numberOfBuckets <= metrics.numberOfSSTables);
 
         effect.trueBeforeAndAfter("No buckets must be empty",
-                                  (metrics) -> !metrics.buckets.stream().anyMatch(List::isEmpty));
+                                  (metrics) -> !metrics.bucketSizes.stream().anyMatch(b -> b == 0));
 
-
-        effect.trueBeforeAndAfter("Total bytes in buckets must be equal to length of sstables in input list",
-                                  (metrics) -> {
-                                      long totalSizeInBuckets = metrics.buckets.stream()
-                                                                  .flatMapToLong(bucket -> bucket.stream().mapToLong(SSTable::bytesOnDisk))
-                                                                  .sum();
-                                      return totalSizeInBuckets == metrics.bytesOnDisk;
-                                  });
-
+        effect.trueBeforeAndAfter("Total bytes in buckets must be less or equal to total bytes on disk for all sstables",
+                                  (metrics) -> metrics.totalBytesOnDiskInBuckets <= metrics.bytesOnDisk);
 
 
         // todo: number of keys
@@ -76,11 +68,11 @@ public class SizeTieredCompactionPropertiesTest
     @Property(trials = 3)
     public void bucketsHotnessRelation(SizeTieredCompactionEffect effect1, SizeTieredCompactionEffect effect2) throws Exception
     {
-        double hotness1 = effect1.before.bucketsByHotness.stream().mapToDouble(s -> s.right).sum();
+        double hotness1 = effect1.before.totalBucketHotness;
         int sstables1 = effect1.before.numberOfSSTables;
         double rates1 = effect1.before.fifteenMinuteReadRateSum;
 
-        double hotness2 = effect2.before.bucketsByHotness.stream().mapToDouble(s -> s.right).sum();
+        double hotness2 = effect2.before.totalBucketHotness;
         int sstables2 = effect2.before.numberOfSSTables;
         double rates2 = effect2.before.fifteenMinuteReadRateSum;
 
