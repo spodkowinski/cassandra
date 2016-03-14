@@ -1,2 +1,1 @@
-org.apache.cassandra.db.ColumnFamilyStoreGenerator
-org.apache.cassandra.db.compaction.SizeTiredCompactionSettingGenerator
+org.apache.cassandra.db.compaction.SizeTieredCompactionEffectGenerator

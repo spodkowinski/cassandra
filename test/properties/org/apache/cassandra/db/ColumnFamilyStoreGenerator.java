@@ -31,8 +31,11 @@ import com.pholser.junit.quickcheck.generator.GenerationStatus;
 import com.pholser.junit.quickcheck.generator.Generator;
 import com.pholser.junit.quickcheck.internal.Reflection;
 import com.pholser.junit.quickcheck.random.SourceOfRandomness;
+import org.apache.cassandra.annotations.NoTTL;
+import org.apache.cassandra.annotations.TTLRatio;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.cql3.ColumnIdentifier;
+import org.apache.cassandra.db.compaction.AbstractCompactionStrategy;
 import org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy;
 import org.apache.cassandra.db.marshal.TimeUUIDType;
 import org.apache.cassandra.dht.ByteOrderedPartitioner;
@@ -54,30 +57,39 @@ import org.apache.cassandra.schema.KeyspaceMetadata;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.Tables;
 import org.apache.cassandra.service.MigrationManager;
+import org.apache.cassandra.utils.FBUtilities;
 
-public class ColumnFamilyStoreGenerator extends Generator<ColumnFamilyStore>
+public abstract class ColumnFamilyStoreGenerator<T> extends Generator<T>
 {
 
 
-    private double tombstonesRatio = (Double) Reflection.defaultValueOf(TombstonesRatio.class, "ratio");
-    private boolean noTombstones = false;
-    private int minSSTables = (Integer) Reflection.defaultValueOf(SSTables.class, "min");
-    private int maxSSTables = (Integer) Reflection.defaultValueOf(SSTables.class, "max");
-    private int minRows = (Integer) Reflection.defaultValueOf(Rows.class, "min");
-    private int maxRows = (Integer) Reflection.defaultValueOf(Rows.class, "max");
+    protected double tombstonesRatio = (Double) Reflection.defaultValueOf(TombstonesRatio.class, "ratio");
+    protected boolean noTombstones = false;
+    protected double ttlRatio = (Double) Reflection.defaultValueOf(TTLRatio.class, "ratio");
+    protected boolean noTTL = false;
+    protected int minSSTables = (Integer) Reflection.defaultValueOf(SSTables.class, "min");
+    protected int maxSSTables = (Integer) Reflection.defaultValueOf(SSTables.class, "max");
+    protected int minRows = (Integer) Reflection.defaultValueOf(Rows.class, "min");
+    protected int maxRows = (Integer) Reflection.defaultValueOf(Rows.class, "max");
 
-    public ColumnFamilyStoreGenerator()
+    protected ColumnFamilyStoreGenerator(Class<T> type)
     {
-        super(ColumnFamilyStore.class);
+        super(type);
     }
 
-    public ColumnFamilyStore generate(SourceOfRandomness rnd, GenerationStatus generationStatus)
+    protected ColumnFamilyStoreGenerator(List<Class<T>> types)
     {
-
-        return generateSetting(rnd, generationStatus);
+        super(types);
     }
 
-    public ColumnFamilyStore generateSetting(SourceOfRandomness rnd, GenerationStatus generationStatus)
+    public ColumnFamilyStore generateStore(SourceOfRandomness rnd, GenerationStatus generationStatus)
+    {
+        return generateStore(rnd, generationStatus, SizeTieredCompactionStrategy.class, Collections.emptyMap());
+    }
+
+    public ColumnFamilyStore generateStore(SourceOfRandomness rnd, GenerationStatus generationStatus,
+                                           Class<? extends AbstractCompactionStrategy> compactionStrategy,
+                                           Map<String, String> compactionParameter)
     {
         String sseed = String.valueOf(rnd.seed());
         sseed = sseed.replace('-', 'N'); // - not allowed as part of KS name
@@ -120,7 +132,11 @@ public class ColumnFamilyStoreGenerator extends Generator<ColumnFamilyStore>
         Map<String, String> thresholds = ImmutableMap.of(
                         CompactionParams.Option.MIN_THRESHOLD.toString(), Integer.toString(2),
                         CompactionParams.Option.MAX_THRESHOLD.toString(), Integer.toString(Integer.MAX_VALUE));
-        cfm.compaction(CompactionParams.create(SizeTieredCompactionStrategy.class, thresholds));
+        Map<String, String> compactionParams = ImmutableMap.<String, String>builder()
+                                               .putAll(compactionParameter)
+                                               .putAll(thresholds)
+                                               .build();
+        cfm.compaction(CompactionParams.create(compactionStrategy, compactionParams));
 
         // set compression
         cfm.compression(compressionParameters(rnd, generationStatus));
@@ -170,16 +186,31 @@ public class ColumnFamilyStoreGenerator extends Generator<ColumnFamilyStore>
         return cfs;
     }
 
-    private static Mutation row(SourceOfRandomness rnd,
+    private Mutation row(SourceOfRandomness rnd,
                                 List<GeneratedColumn> pkColumns,
                                 List<GeneratedColumn> clusteringColumns,
                                 List<GeneratedColumn> regularColumns,
                                 CFMetaData metadata,
                                 boolean sparse)
     {
+        // generate row tombstones and ttl
+        int localDeleteTime = 0;
+        long deleteTimestamp = 0L;
+        if(!noTombstones && rnd.nextDouble() <= tombstonesRatio)
+        {
+            localDeleteTime = FBUtilities.nowInSeconds() + (rnd.nextInt(-60, 10));
+            deleteTimestamp = FBUtilities.timestampMicros() + (rnd.nextInt(-60000, 10000));
+        }
+        int ttl = 0;
+        if(!noTTL && rnd.nextDouble() <= ttlRatio)
+        {
+            // number of seconds on top of localDeleteTime
+            ttl = rnd.nextInt(0, 60);
+        }
+
         // create row builder with PK values
         List<Object> pkValues = pkColumns.stream().map(p -> p.value.get()).collect(Collectors.toList());
-        RowUpdateBuilder rowBuilder = new RowUpdateBuilder(metadata, 0, 0L, 0, pkValues.toArray());
+        RowUpdateBuilder rowBuilder = new RowUpdateBuilder(metadata, localDeleteTime, deleteTimestamp, ttl, pkValues.toArray());
 
         // add clustering key values
         List<Object> clusteringValues = clusteringColumns.stream().map(p -> p.value.get()).collect(Collectors.toList());
@@ -195,6 +226,7 @@ public class ColumnFamilyStoreGenerator extends Generator<ColumnFamilyStore>
 
         return rowBuilder.build();
     }
+
 
     public static IPartitioner partitioner(SourceOfRandomness rnd, GenerationStatus generationStatus)
     {
@@ -243,6 +275,16 @@ public class ColumnFamilyStoreGenerator extends Generator<ColumnFamilyStore>
     public void configure(NoTombstones justno)
     {
         this.noTombstones = true;
+    }
+
+    public void configure(TTLRatio ratio)
+    {
+        this.ttlRatio = ratio.ratio();
+    }
+
+    public void configure(NoTTL justno)
+    {
+        this.noTTL = true;
     }
 
     public void configure(SSTables sstables)
