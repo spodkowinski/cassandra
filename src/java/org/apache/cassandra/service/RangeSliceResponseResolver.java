@@ -159,7 +159,7 @@ public class RangeSliceResponseResolver implements IResponseResolver<RangeSliceR
             }
             // resolved can be null even if versions doesn't have all nulls because of the call to removeDeleted in resolveSuperSet
             if (resolved != null)
-                repairResults.addAll(RowDataResolver.scheduleRepairs(resolved, keyspaceName, key, versions, versionSources));
+                repairResults.addAll(RowDataResolver.scheduleRepairs(resolved, keyspaceName, key, versions, versionSources, timestamp));
             versions.clear();
             versionSources.clear();
             return new Row(key, resolved);

@@ -90,7 +90,7 @@ public class RowDataResolver extends AbstractRowResolver
             // send updates to any replica that was missing part of the full row
             // (resolved can be null even if versions doesn't have all nulls because of the call to removeDeleted in resolveSuperSet)
             if (resolved != null)
-                repairResults = scheduleRepairs(resolved, keyspaceName, key, versions, endpoints);
+                repairResults = scheduleRepairs(resolved, keyspaceName, key, versions, endpoints, timestamp);
         }
         else
         {
@@ -107,7 +107,9 @@ public class RowDataResolver extends AbstractRowResolver
      * For each row version, compare with resolved (the superset of all row versions);
      * if it is missing anything, send a mutation to the endpoint it come from.
      */
-    public static List<AsyncOneResponse> scheduleRepairs(ColumnFamily resolved, String keyspaceName, DecoratedKey key, List<ColumnFamily> versions, List<InetAddress> endpoints)
+    public static List<AsyncOneResponse> scheduleRepairs(ColumnFamily resolved, String keyspaceName, DecoratedKey key,
+                                                         List<ColumnFamily> versions, List<InetAddress> endpoints,
+                                                         long now)
     {
         List<AsyncOneResponse> results = new ArrayList<AsyncOneResponse>(versions.size());
 
@@ -115,6 +117,12 @@ public class RowDataResolver extends AbstractRowResolver
         {
             ColumnFamily diffCf = ColumnFamily.diff(versions.get(i), resolved);
             if (diffCf == null) // no repair needs to happen
+                continue;
+
+            // do not resurrect tombstones older then gc_grace
+            int gcBefore = (int) (now / 1000) - diffCf.metadata().getGcGraceSeconds();
+            diffCf.purgeTombstones(gcBefore);
+            if (diffCf.isEmpty())
                 continue;
 
             // create and send the mutation message based on the diff
