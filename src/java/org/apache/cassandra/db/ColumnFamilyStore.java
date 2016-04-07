@@ -2275,12 +2275,17 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                     removeDroppedColumns(data);
                 }
 
+                // remove purgable tombstones from result - see CASSANDRA-11427
+                int gcBefore = gcBefore(filter.timestamp);
+                data = ColumnFamilyStore.removeDeletedCF(data, gcBefore);
+                if (data == null)
+                    continue;
+
                 rows.add(new Row(rawRow.key, data));
                 if (!ignoreTombstonedPartitions || !data.hasOnlyTombstones(filter.timestamp))
                     matched++;
 
-                if (data != null)
-                    columnsCount += filter.lastCounted(data);
+                columnsCount += filter.lastCounted(data);
                 // Update the underlying filter to avoid querying more columns per slice than necessary and to handle paging
                 filter.updateFilter(columnsCount);
             }
