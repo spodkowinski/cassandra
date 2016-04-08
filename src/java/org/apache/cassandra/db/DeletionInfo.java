@@ -188,7 +188,7 @@ public class DeletionInfo implements IMeasurableMemory
     {
         RangeTombstoneList rangeDiff = superset.ranges == null || superset.ranges.isEmpty()
                                      ? null
-                                     : ranges == null ? superset.ranges.copy() : ranges.diff(superset.ranges);
+                                     : ranges == null ? superset.ranges : ranges.diff(superset.ranges);
 
         return topLevel.markedForDeleteAt != superset.topLevel.markedForDeleteAt || rangeDiff != null
              ? new DeletionInfo(superset.topLevel, rangeDiff)
