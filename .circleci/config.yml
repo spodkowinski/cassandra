@@ -1,3 +1,5 @@
+version: 2.1
+
 default_env_vars: &default_env_vars
     JAVA_HOME: /usr/lib/jvm/java-8-openjdk-amd64
     ANT_HOME: /usr/share/ant
@@ -11,24 +13,7 @@ default_env_vars: &default_env_vars
     PYTHONUNBUFFERED: true
     CASS_DRIVER_NO_EXTENSIONS: true
     CASS_DRIVER_NO_CYTHON: true
-# For environments with xlarge instances, use more memory
-high_capacity_env_vars: &high_capacity_env_vars
-    <<: *default_env_vars
-    CCM_MAX_HEAP_SIZE: 2048M
-    CCM_HEAP_NEWSIZE: 512M
-# For environments with limited memory (e.g the free OSS CircleCI Tier)
-resource_constrained_env_vars: &resource_constrained_env_vars
-    <<: *default_env_vars
-    CCM_MAX_HEAP_SIZE: 1024M
-    CCM_HEAP_NEWSIZE: 256M
-# Settings for users who do not have a paid CircleCI account
-default_env_settings: &default_env_settings
-    resource_class: medium
-    parallelism: 4
-# Settings for users with high-capacity, paid CircleCI account
-high_capacity_env_settings: &high_capacity_env_settings
-    resource_class: xlarge
-    parallelism: 100
+
 default_jobs: &default_jobs
         jobs:
             - build
@@ -42,9 +27,11 @@ with_dtests_jobs: &with_dtest_jobs
                   requires:
                       - build
             - dtests-with-vnodes:
+                  type: approval
                   requires:
                       - build
             - dtests-no-vnodes:
+                  type: approval
                   requires:
                       - build
 with_dtest_jobs_only: &with_dtest_jobs_only
@@ -56,30 +43,44 @@ with_dtest_jobs_only: &with_dtest_jobs_only
             - dtests-no-vnodes:
                   requires:
                       - build
-# Set env_settings, env_vars, and workflows/build_and_run_tests based on environment
-env_settings: &env_settings
-    <<: *default_env_settings
-    #<<: *high_capacity_env_settings
-env_vars: &env_vars
-    <<: *resource_constrained_env_vars
-    #<<: *high_capacity_env_vars
+
 workflows:
     version: 2
-    build_and_run_tests: *default_jobs
+    #build_and_run_tests: *default_jobs
     #build_and_run_tests: *with_dtest_jobs_only
-    #build_and_run_tests: *with_dtest_jobs
-docker_image: &docker_image spod/cassandra-testing-ubuntu18-java11
-version: 2
-jobs:
-  build:
-    <<: *env_settings
-    parallelism: 1 # This job doesn't benefit from parallelism
+    build_and_run_tests: *with_dtest_jobs
+
+executors:
+  # Settings for users with high-capacity, paid CircleCI account
+  high-capacity-executor:
+    docker:
+      - image: spod/cassandra-testing-ubuntu18-java11
+    resource_class: xlarge
     working_directory: ~/
     shell: /bin/bash -eo pipefail -l
+    # For environments with xlarge instances, use more memory
+    environment:
+      <<: *default_env_vars
+      CCM_MAX_HEAP_SIZE: 2048M
+      CCM_HEAP_NEWSIZE: 512M
+
+  # Settings for users who do not have a paid CircleCI account
+  low-capacity-executor:
     docker:
-      - image: *docker_image
-        environment:
-            <<: *env_vars
+      - image: spod/cassandra-testing-ubuntu18-java11
+    resource_class: medium
+    working_directory: ~/
+    shell: /bin/bash -eo pipefail -l
+    # For environments with limited memory (e.g the free OSS CircleCI Tier)
+    environment:
+      <<: *default_env_vars
+      CCM_MAX_HEAP_SIZE: 1024M
+      CCM_HEAP_NEWSIZE: 256M
+
+jobs:
+  build:
+    executor: low-capacity-executor
+    parallelism: 1 # This job doesn't benefit from parallelism
     steps:
       - run:
           name: Log Environment Information
@@ -140,13 +141,8 @@ jobs:
                 - cassandra
                 - .m2
   unit_tests:
-    <<: *env_settings
-    working_directory: ~/
-    shell: /bin/bash -eo pipefail -l
-    docker:
-      - image: *docker_image
-        environment:
-            <<: *env_vars
+    executor: low-capacity-executor
+    parallelism: 4
     steps:
       - attach_workspace:
           at: /home/cassandra
@@ -192,13 +188,8 @@ jobs:
           path: /tmp/cassandra/build/test/logs
           destination: logs
   dtests-with-vnodes:
-    <<: *env_settings
-    working_directory: ~/
-    shell: /bin/bash -eo pipefail -l
-    docker:
-      - image: *docker_image
-        environment:
-            <<: *env_vars
+    executor: high-capacity-executor
+    parallelism: 100
     steps:
       - attach_workspace:
           at: /home/cassandra
@@ -270,13 +261,8 @@ jobs:
           path: ~/cassandra-dtest/logs
           destination: dtest_with_vnodes_logs
   dtests-no-vnodes:
-    <<: *env_settings
-    working_directory: ~/
-    shell: /bin/bash -eo pipefail -l
-    docker:
-      - image: *docker_image
-        environment:
-            <<: *env_vars
+    executor: high-capacity-executor
+    parallelism: 100
     steps:
       - attach_workspace:
           at: /home/cassandra
