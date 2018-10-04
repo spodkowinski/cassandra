@@ -1,13 +1,11 @@
 version: 2.1
 
 default_env_vars: &default_env_vars
-    JAVA_HOME: /usr/lib/jvm/java-8-openjdk-amd64
+    JAVA8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
+    JAVA11_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF8
     ANT_HOME: /usr/share/ant
     LANG: en_US.UTF-8
-    JDK_HOME: /usr/lib/jvm/java-8-openjdk-amd64
-    JAVA8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
-    JAVA11_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     KEEP_TEST_DIR: true
     DEFAULT_DIR: /home/cassandra/cassandra-dtest
     PYTHONIOENCODING: utf-8
@@ -20,44 +18,61 @@ default_env_vars: &default_env_vars
     CCM_MAX_HEAP_SIZE: 1024M #2048M
     CCM_HEAP_NEWSIZE: 256M #512M
 
-default_jobs: &default_jobs
-        jobs:
-            - build
-            - unit_tests:
-                  requires:
-                      - build
 with_dtests_jobs: &with_dtest_jobs
         jobs:
             - build
-            - unit_tests:
-                  requires:
-                      - build
-            - dtests-with-vnodes:
-                  type: approval
-                  requires:
-                      - build
-            - dtests-no-vnodes:
-                  type: approval
-                  requires:
-                      - build
+            # Java 8 unit tests will be run automatically
+            - j8_unit_tests:
+                requires:
+                  - build
+            # Java 11 unit tests (on request, currently not working)
+            - start_j11_unit_tests:
+                type: approval
+                requires:
+                  - build
+            - j11_unit_tests:
+                requires:
+                  - start_j11_unit_tests
+            # Java 8 dtests (on request)
+            - start_j8_dtests:
+                type: approval
+                requires:
+                  - build
+            - j8_dtests-with-vnodes:
+                requires:
+                  - start_j8_dtests
+            - j8_dtests-no-vnodes:
+                requires:
+                  - start_j8_dtests
+            # Java 11 dtests (on request)
+            - start_j11_dtests:
+                type: approval
+                requires:
+                  - build
+            - j11_dtests-with-vnodes:
+                requires:
+                - start_j11_dtests
+            - j11_dtests-no-vnodes:
+                requires:
+                - start_j11_dtests
+
 with_dtest_jobs_only: &with_dtest_jobs_only
         jobs:
             - build
-            - dtests-with-vnodes:
+            - j8_dtests-with-vnodes:
                   requires:
                       - build
-            - dtests-no-vnodes:
+            - j8_dtests-no-vnodes:
                   requires:
                       - build
 
 workflows:
     version: 2
-    #build_and_run_tests: *default_jobs
-    build_and_run_tests: *with_dtest_jobs_only
-    #build_and_run_tests: *with_dtest_jobs
+    build_and_run_tests: *with_dtest_jobs
+    #build_and_run_tests: *with_dtest_jobs_only
 
 executors:
-  std-executor:
+  java8-executor:
     parameters:
       exec_resource_class:
         type: string
@@ -69,10 +84,27 @@ executors:
     shell: /bin/bash -eo pipefail -l
     environment:
       <<: *default_env_vars
+      JAVA_HOME: /usr/lib/jvm/java-8-openjdk-amd64
+      JDK_HOME: /usr/lib/jvm/java-8-openjdk-amd64
+
+  java11-executor:
+    parameters:
+      exec_resource_class:
+        type: string
+        default: medium
+    docker:
+    - image: spod/cassandra-testing-ubuntu18-java11
+    resource_class: << parameters.exec_resource_class >>
+    working_directory: ~/
+    shell: /bin/bash -eo pipefail -l
+    environment:
+      <<: *default_env_vars
+      JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+      JDK_HOME: /usr/lib/jvm/java-11-openjdk-amd64
 
 jobs:
   build:
-    executor: std-executor
+    executor: java11-executor
     parallelism: 1 # This job doesn't benefit from parallelism
     steps:
       - log_environment
@@ -84,30 +116,12 @@ jobs:
             paths:
                 - cassandra
                 - .m2
-  unit_tests:
-    executor:
-      name: std-executor
-      exec_resource_class: medium # TODO: how can we parameterize this from the outside?
-    parallelism: 4
-    steps:
-      - attach_workspace:
-          at: /home/cassandra
-      - create_junit_containers
-      - run_junit_tests
-      - store_test_results:
-            path: /tmp/cassandra/build/test/output/
-      - store_artifacts:
-          path: /tmp/cassandra/build/test/output
-          destination: junitxml
-      - store_artifacts:
-          path: /tmp/cassandra/build/test/logs
-          destination: logs
 
-  j11_unit_tests:
+  j8_unit_tests:
     executor:
-      name: java11-executor
-      exec_resource_class: medium
-    parallelism: 4
+      name: java8-executor
+      exec_resource_class: medium # TODO: how can we parameterize this from the outside?
+    parallelism: 4 # TODO: how can we parameterize this from the outside?
     steps:
       - attach_workspace:
           at: /home/cassandra
@@ -115,34 +129,65 @@ jobs:
       - log_environment
       - run_junit_tests
 
-  j8_long_unit_tests:
+  j11_unit_tests:
     executor:
-      name: std-executor
+      name: java11-executor
       exec_resource_class: medium
-    parallelism: 4 # 100 # TODO: how can we parameterize this from the outside?
+    parallelism: 4
     steps:
-      - attach_workspace:
-          at: /home/cassandra
-      - clone_dtest
-      - create_venv
-      - create_dtest_containers:
-          use_vnodes: true
-      - run_dtests:
-          use_vnodes: true
-      - store_test_results:
-          path: /tmp/results
-      - store_artifacts:
-          path: /tmp/dtest
-          destination: dtest_with_vnodes
-      - store_artifacts:
-          path: ~/cassandra-dtest/logs
-          destination: dtest_with_vnodes_logs
+    - attach_workspace:
+        at: /home/cassandra
+    - create_junit_containers
+    - log_environment
+    - run_junit_tests
 
-  dtests-no-vnodes:
+  j8_dtests-with-vnodes:
     executor:
-      name: std-executor
-      exec_resource_class: medium
-    parallelism: 4 # 100
+      name: java8-executor
+      exec_resource_class: xlarge
+    parallelism: 100
+    steps:
+      - attach_workspace:
+          at: /home/cassandra
+      - clone_dtest
+      - create_venv
+      - create_dtest_containers:
+          use_vnodes: true
+      - run_dtests:
+          use_vnodes: true
+      - store_artifacts:
+          path: /tmp/dtest
+          destination: j8_dtest_with_vnodes
+      - store_artifacts:
+          path: ~/cassandra-dtest/logs
+          destination: j8_dtest_with_vnodes_logs
+
+  j11_dtests-with-vnodes:
+    executor:
+      name: java11-executor
+      exec_resource_class: xlarge
+    parallelism: 100
+    steps:
+    - attach_workspace:
+        at: /home/cassandra
+    - clone_dtest
+    - create_venv
+    - create_dtest_containers:
+        use_vnodes: true
+    - run_dtests:
+        use_vnodes: true
+    - store_artifacts:
+        path: /tmp/dtest
+        destination: j11_dtest_with_vnodes
+    - store_artifacts:
+        path: ~/cassandra-dtest/logs
+        destination: j11_dtest_with_vnodes_logs
+
+  j8_dtests-no-vnodes:
+    executor:
+      name: java8-executor
+      exec_resource_class: xlarge
+    parallelism: 100
     steps:
       - attach_workspace:
           at: /home/cassandra
@@ -152,14 +197,33 @@ jobs:
           use_vnodes: false
       - run_dtests:
           use_vnodes: false
-      - store_test_results:
-          path: /tmp/results
       - store_artifacts:
           path: /tmp/dtest
-          destination: dtest_no_vnodes
+          destination: j8_dtest_no_vnodes
       - store_artifacts:
           path: ~/cassandra-dtest/logs
-          destination: dtest_no_vnodes_logs
+          destination: j8_dtest_no_vnodes_logs
+
+  j11_dtests-no-vnodes:
+    executor:
+      name: java11-executor
+      exec_resource_class: xlarge
+    parallelism: 100
+    steps:
+    - attach_workspace:
+        at: /home/cassandra
+    - clone_dtest
+    - create_venv
+    - create_dtest_containers:
+        use_vnodes: false
+    - run_dtests:
+        use_vnodes: false
+    - store_artifacts:
+        path: /tmp/dtest
+        destination: j11_dtest_no_vnodes
+    - store_artifacts:
+        path: ~/cassandra-dtest/logs
+        destination: j11_dtest_no_vnodes_logs
 
 commands:
   log_environment:
@@ -255,13 +319,22 @@ commands:
     steps:
     - run:
         name: Run Unit Tests
+        # Please note that we run `clean` ant therefore rebuild the project, as we can't run tests on Java 8 in case
+        # based on Java 11 builds.
         command: |
           export PATH=$JAVA_HOME/bin:$PATH
           time mv ~/cassandra /tmp
           cd /tmp/cassandra
-          ant testclasslist -Dtest.classlistfile=/tmp/java_tests_${CIRCLE_NODE_INDEX}_final.txt
+          ant clean testclasslist -Dtest.classlistfile=/tmp/java_tests_${CIRCLE_NODE_INDEX}_final.txt
         no_output_timeout: 15m
-
+    - store_test_results:
+        path: /tmp/cassandra/build/test/output/
+    - store_artifacts:
+        path: /tmp/cassandra/build/test/output
+        destination: junitxml
+    - store_artifacts:
+        path: /tmp/cassandra/build/test/logs
+        destination: logs
 
   create_venv:
     steps:
@@ -374,4 +447,5 @@ commands:
                   export SPLIT_TESTS=`cat /tmp/split_dtest_tests_without_vnodes_final.txt`
                   set -o pipefail && cd ~/cassandra-dtest && pytest --log-level="INFO" --junit-xml=/tmp/results/dtests/pytest_result_novnodes.xml -s --cassandra-dir=/home/cassandra/cassandra --skip-resource-intensive-tests --keep-test-dir $SPLIT_TESTS 2>&1 | tee /tmp/dtest/stdout-novnodes.txt
               fi
-
+    - store_test_results:
+        path: /tmp/results
