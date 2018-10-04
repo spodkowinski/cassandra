@@ -13,6 +13,9 @@ default_env_vars: &default_env_vars
     PYTHONUNBUFFERED: true
     CASS_DRIVER_NO_EXTENSIONS: true
     CASS_DRIVER_NO_CYTHON: true
+    # Paid account users: override the following in a org context or your project's environment variable settings!
+    CCM_MAX_HEAP_SIZE: 1024M #2048M
+    CCM_HEAP_NEWSIZE: 256M #512M
 
 default_jobs: &default_jobs
         jobs:
@@ -51,35 +54,22 @@ workflows:
     build_and_run_tests: *with_dtest_jobs
 
 executors:
-  # Settings for users with high-capacity, paid CircleCI account
-  high-capacity-executor:
+  std-executor:
+    parameters:
+      exec_resource_class:
+        type: string
+        default: medium
     docker:
       - image: spod/cassandra-testing-ubuntu18-java11
-    resource_class: xlarge
+    resource_class: << parameters.exec_resource_class >>
     working_directory: ~/
     shell: /bin/bash -eo pipefail -l
-    # For environments with xlarge instances, use more memory
     environment:
       <<: *default_env_vars
-      CCM_MAX_HEAP_SIZE: 2048M
-      CCM_HEAP_NEWSIZE: 512M
-
-  # Settings for users who do not have a paid CircleCI account
-  low-capacity-executor:
-    docker:
-      - image: spod/cassandra-testing-ubuntu18-java11
-    resource_class: medium
-    working_directory: ~/
-    shell: /bin/bash -eo pipefail -l
-    # For environments with limited memory (e.g the free OSS CircleCI Tier)
-    environment:
-      <<: *default_env_vars
-      CCM_MAX_HEAP_SIZE: 1024M
-      CCM_HEAP_NEWSIZE: 256M
 
 jobs:
   build:
-    executor: low-capacity-executor
+    executor: std-executor
     parallelism: 1 # This job doesn't benefit from parallelism
     steps:
       - run:
@@ -141,7 +131,9 @@ jobs:
                 - cassandra
                 - .m2
   unit_tests:
-    executor: low-capacity-executor
+    executor:
+      name: std-executor
+      exec_resource_class: medium # TODO: how can we parameterize this from the outside?
     parallelism: 4
     steps:
       - attach_workspace:
@@ -188,7 +180,9 @@ jobs:
           path: /tmp/cassandra/build/test/logs
           destination: logs
   dtests-with-vnodes:
-    executor: high-capacity-executor
+    executor:
+      name: std-executor
+      exec_resource_class: xlarge
     parallelism: 100
     steps:
       - attach_workspace:
@@ -261,7 +255,9 @@ jobs:
           path: ~/cassandra-dtest/logs
           destination: dtest_with_vnodes_logs
   dtests-no-vnodes:
-    executor: high-capacity-executor
+    executor:
+      name: std-executor
+      exec_resource_class: xlarge
     parallelism: 100
     steps:
       - attach_workspace:
