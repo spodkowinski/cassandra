@@ -155,17 +155,11 @@ jobs:
       - clone_dtest
       - create_venv
       - create_dtest_containers:
-          file_tag: with_vnodes
+          file_tag: j8_with_vnodes
           run_dtests_extra_args: '--use-vnodes --skip-resource-intensive-tests'
       - run_dtests:
-          file_tag: with_vnodes
+          file_tag: j8_with_vnodes
           pytest_extra_args: '--use-vnodes --num-tokens=32 --skip-resource-intensive-tests'
-      - store_artifacts:
-          path: /tmp/dtest
-          destination: j8_dtest_with_vnodes
-      - store_artifacts:
-          path: ~/cassandra-dtest/logs
-          destination: j8_dtest_with_vnodes_logs
 
   j11_dtests-with-vnodes:
     executor:
@@ -178,17 +172,11 @@ jobs:
     - clone_dtest
     - create_venv
     - create_dtest_containers:
-        file_tag: with_vnodes
+        file_tag: j11_with_vnodes
         run_dtests_extra_args: '--use-vnodes --skip-resource-intensive-tests'
     - run_dtests:
-        file_tag: with_vnodes
+        file_tag: j11_with_vnodes
         pytest_extra_args: '--use-vnodes --num-tokens=32 --skip-resource-intensive-tests'
-    - store_artifacts:
-        path: /tmp/dtest
-        destination: j11_dtest_with_vnodes
-    - store_artifacts:
-        path: ~/cassandra-dtest/logs
-        destination: j11_dtest_with_vnodes_logs
 
   j8_dtests-no-vnodes:
     executor:
@@ -201,17 +189,11 @@ jobs:
       - clone_dtest
       - create_venv
       - create_dtest_containers:
-          file_tag: without_vnodes
+          file_tag: j8_without_vnodes
           run_dtests_extra_args: '--skip-resource-intensive-tests'
       - run_dtests:
-          file_tag: without_vnodes
+          file_tag: j8_without_vnodes
           pytest_extra_args: '--skip-resource-intensive-tests'
-      - store_artifacts:
-          path: /tmp/dtest
-          destination: j8_dtest_no_vnodes
-      - store_artifacts:
-          path: ~/cassandra-dtest/logs
-          destination: j8_dtest_no_vnodes_logs
 
   j11_dtests-no-vnodes:
     executor:
@@ -224,17 +206,11 @@ jobs:
     - clone_dtest
     - create_venv
     - create_dtest_containers:
-        file_tag: without_vnodes
+        file_tag: j11_without_vnodes
         run_dtests_extra_args: '--skip-resource-intensive-tests'
     - run_dtests:
-        file_tag: without_vnodes
+        file_tag: j11_without_vnodes
         pytest_extra_args: '--skip-resource-intensive-tests'
-    - store_artifacts:
-        path: /tmp/dtest
-        destination: j11_dtest_no_vnodes
-    - store_artifacts:
-        path: ~/cassandra-dtest/logs
-        destination: j11_dtest_no_vnodes_logs
 
 commands:
   log_environment:
@@ -424,3 +400,9 @@ commands:
             set -o pipefail && cd ~/cassandra-dtest && pytest <<parameters.pytest_extra_args>> --log-level="INFO" --junit-xml=/tmp/results/dtests/pytest_result_<<parameters.file_tag>>.xml -s --cassandra-dir=/home/cassandra/cassandra --keep-test-dir $SPLIT_TESTS 2>&1 | tee /tmp/dtest/stdout.txt
       - store_test_results:
           path: /tmp/results
+      - store_artifacts:
+          path: /tmp/dtest
+          destination: dtest_<<parameters.file_tag>>
+      - store_artifacts:
+          path: ~/cassandra-dtest/logs
+          destination: dtest_<<parameters.file_tag>>_logs
