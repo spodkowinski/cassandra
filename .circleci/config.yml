@@ -152,9 +152,11 @@ jobs:
       - clone_dtest
       - create_venv
       - create_dtest_containers:
-          use_vnodes: true
+          file_tag: with_vnodes
+          run_dtests_extra_args: '--use-vnodes --skip-resource-intensive-tests'
       - run_dtests:
-          use_vnodes: true
+          file_tag: with_vnodes
+          pytest_extra_args: '--use-vnodes --num-tokens=32 --skip-resource-intensive-tests'
       - store_artifacts:
           path: /tmp/dtest
           destination: j8_dtest_with_vnodes
@@ -173,9 +175,11 @@ jobs:
     - clone_dtest
     - create_venv
     - create_dtest_containers:
-        use_vnodes: true
+        file_tag: with_vnodes
+        run_dtests_extra_args: '--use-vnodes --skip-resource-intensive-tests'
     - run_dtests:
-        use_vnodes: true
+        file_tag: with_vnodes
+        pytest_extra_args: '--use-vnodes --num-tokens=32 --skip-resource-intensive-tests'
     - store_artifacts:
         path: /tmp/dtest
         destination: j11_dtest_with_vnodes
@@ -194,9 +198,11 @@ jobs:
       - clone_dtest
       - create_venv
       - create_dtest_containers:
-          use_vnodes: false
+          file_tag: without_vnodes
+          run_dtests_extra_args: '--skip-resource-intensive-tests'
       - run_dtests:
-          use_vnodes: false
+          file_tag: without_vnodes
+          pytest_extra_args: '--skip-resource-intensive-tests'
       - store_artifacts:
           path: /tmp/dtest
           destination: j8_dtest_no_vnodes
@@ -215,9 +221,11 @@ jobs:
     - clone_dtest
     - create_venv
     - create_dtest_containers:
-        use_vnodes: false
+        file_tag: without_vnodes
+        run_dtests_extra_args: '--skip-resource-intensive-tests'
     - run_dtests:
-        use_vnodes: false
+        file_tag: without_vnodes
+        pytest_extra_args: '--skip-resource-intensive-tests'
     - store_artifacts:
         path: /tmp/dtest
         destination: j11_dtest_no_vnodes
@@ -352,100 +360,64 @@ commands:
 
   create_dtest_containers:
     parameters:
-      use_vnodes:
-        type: boolean
+      file_tag:
+        type: string
+      run_dtests_extra_args:
+        type: string
+        default: ''
+      tests_filter_pattern:
+        type: string
+        default: ''
     steps:
-    - when:
-        condition: <<parameters.use_vnodes>>
-        steps:
-        - run:
-            name: Determine Tests to Run
-            no_output_timeout: 5m
-            command: |
-              # reminder: this code (along with all the steps) is independently executed on every circle container
-              # so the goal here is to get the circleci script to return the tests *this* container will run
-              # which we do via the `circleci` cli tool.
+    - run:
+        name: Determine Tests to Run (<<parameters.file_tag>>)
+        no_output_timeout: 5m
+        command: |
+          # reminder: this code (along with all the steps) is independently executed on every circle container
+          # so the goal here is to get the circleci script to return the tests *this* container will run
+          # which we do via the `circleci` cli tool.
 
-              cd cassandra-dtest
-              source ~/env/bin/activate
-              export PATH=$JAVA_HOME/bin:$PATH
+          cd cassandra-dtest
+          source ~/env/bin/activate
+          export PATH=$JAVA_HOME/bin:$PATH
 
-              echo "***Collected DTests (with vnodes)***"
-              set -eo pipefail && ./run_dtests.py --use-vnodes --dtest-print-tests-only --skip-resource-intensive-tests --dtest-print-tests-output=/tmp/all_dtest_tests_with_vnodes
-              set -eo pipefail && circleci tests split --split-by=timings --timings-type=classname /tmp/all_dtest_tests_with_vnodes > /tmp/split_dtest_tests_with_vnodes.txt
-              cat /tmp/split_dtest_tests_with_vnodes.txt | tr '\n' ' ' > /tmp/split_dtest_tests_with_vnodes_final.txt
-              # cat /tmp/split_dtest_tests_with_vnodes.txt
-              cat /tmp/split_dtest_tests_with_vnodes_final.txt
-
-    - unless:
-        condition: <<parameters.use_vnodes>>
-        steps:
-          - run:
-              name: Determine Tests to Run
-              no_output_timeout: 5m
-              command: |
-                # reminder: this code (along with all the steps) is independently executed on every circle container
-                # so the goal here is to get the circleci script to return the tests *this* container will run
-                # which we do via the `circleci` cli tool.
-
-                cd cassandra-dtest
-                source ~/env/bin/activate
-                export PATH=$JAVA_HOME/bin:$PATH
-
-                echo "***Collected DTests (without vnodes)***"
-                ./run_dtests.py --dtest-print-tests-only --skip-resource-intensive-tests --dtest-print-tests-output=/tmp/all_dtest_tests_without_vnodes
-                set -eo pipefail && circleci tests split --split-by=timings --timings-type=classname /tmp/all_dtest_tests_without_vnodes > /tmp/split_dtest_tests_without_vnodes.txt
-                cat /tmp/split_dtest_tests_without_vnodes.txt | tr '\n' ' ' > /tmp/split_dtest_tests_without_vnodes_final.txt
-                # cat /tmp/split_dtest_tests_without_vnodes.txt
-                cat /tmp/split_dtest_tests_without_vnodes_final.txt
+          echo "***Collected DTests (<<parameters.file_tag>>)***"
+          set -eo pipefail && ./run_dtests.py <<parameters.run_dtests_extra_args>> --dtest-print-tests-only --dtest-print-tests-output=/tmp/all_dtest_tests_<<parameters.file_tag>>_raw
+          if [ -z '<<parameters.tests_filter_pattern>>' ]; then
+            mv /tmp/all_dtest_tests_<<parameters.file_tag>>_raw /tmp/all_dtest_tests_<<parameters.file_tag>>
+          else
+            grep -e '<<parameters.tests_filter_pattern>>' /tmp/all_dtest_tests_<<parameters.file_tag>>_raw > /tmp/all_dtest_tests_<<parameters.file_tag>> || { echo "Filter did not match any tests! Exiting build."; exit 0; }
+          fi
+          set -eo pipefail && circleci tests split --split-by=timings --timings-type=classname /tmp/all_dtest_tests_<<parameters.file_tag>> > /tmp/split_dtest_tests_<<parameters.file_tag>>.txt
+          cat /tmp/split_dtest_tests_<<parameters.file_tag>>.txt | tr '\n' ' ' > /tmp/split_dtest_tests_<<parameters.file_tag>>_final.txt
+          cat /tmp/split_dtest_tests_<<parameters.file_tag>>_final.txt
 
   run_dtests:
     parameters:
-      use_vnodes:
-        type: boolean
+      file_tag:
+        type: string
+      pytest_extra_args:
+        type: string
+        default: ''
     steps:
-    - when:
-        condition: <<parameters.use_vnodes>>
-        steps:
-          - run:
-              name: Run dtests (with vnodes)
-              no_output_timeout: 15m
-              command: |
-                echo "cat /tmp/split_dtest_tests_with_vnodes_final.txt"
-                cat /tmp/split_dtest_tests_with_vnodes_final.txt
+      - run:
+          name: Run dtests (<<parameters.file_tag>>)
+          no_output_timeout: 15m
+          command: |
+            echo "cat /tmp/split_dtest_tests_<<parameters.file_tag>>_final.txt"
+            cat /tmp/split_dtest_tests_<<parameters.file_tag>>_final.txt
 
-                source ~/env/bin/activate
-                export PATH=$JAVA_HOME/bin:$PATH
+            source ~/env/bin/activate
+            export PATH=$JAVA_HOME/bin:$PATH
 
-                cd ~/cassandra-dtest
-                mkdir -p /tmp/dtest
+            cd ~/cassandra-dtest
+            mkdir -p /tmp/dtest
 
-                echo "env: $(env)"
-                echo "** done env"
-                mkdir -p /tmp/results/dtests
-                # we need the "set -o pipefail" here so that the exit code that circleci will actually use is from pytest and not the exit code from tee
-                export SPLIT_TESTS=`cat /tmp/split_dtest_tests_with_vnodes_final.txt`
-                set -o pipefail && cd ~/cassandra-dtest && pytest --log-level="INFO" --use-vnodes --num-tokens=32 --junit-xml=/tmp/results/dtests/pytest_result_with_vnodes.xml -s --cassandra-dir=/home/cassandra/cassandra --skip-resource-intensive-tests --keep-test-dir $SPLIT_TESTS 2>&1 | tee /tmp/dtest/stdout.txt
-
-    - unless:
-        condition: <<parameters.use_vnodes>>
-        steps:
-          - run:
-            name: Run dtests (without vnodes)
-            no_output_timeout: 15m
-            command: |
-              # for now require at least 50 circleci containers to run the dtests (with less resources the tests won't produce reliable results or will fail to complete)
-              if [ $CIRCLE_NODE_TOTAL -gt 0 ]; then
-                  source ~/env/bin/activate
-                  export PATH=$JAVA_HOME/bin:$PATH
-
-                  cd ~/cassandra-dtest
-                  mkdir -p /tmp/dtest
-
-                  mkdir -p /tmp/results/dtests
-                  # we need the "set -o pipefail" here so that the exit code that circleci will actually use is from pytest and not the exit code from tee
-                  export SPLIT_TESTS=`cat /tmp/split_dtest_tests_without_vnodes_final.txt`
-                  set -o pipefail && cd ~/cassandra-dtest && pytest --log-level="INFO" --junit-xml=/tmp/results/dtests/pytest_result_novnodes.xml -s --cassandra-dir=/home/cassandra/cassandra --skip-resource-intensive-tests --keep-test-dir $SPLIT_TESTS 2>&1 | tee /tmp/dtest/stdout-novnodes.txt
-              fi
-    - store_test_results:
-        path: /tmp/results
+            echo "env: $(env)"
+            echo "** done env"
+            mkdir -p /tmp/results/dtests
+            # we need the "set -o pipefail" here so that the exit code that circleci will actually use is from pytest and not the exit code from tee
+            export SPLIT_TESTS=`cat /tmp/split_dtest_tests_<<parameters.file_tag>>_final.txt`
+            set -o pipefail && cd ~/cassandra-dtest && pytest <<parameters.pytest_extra_args>> --log-level="INFO" --junit-xml=/tmp/results/dtests/pytest_result_<<parameters.file_tag>>.xml -s --cassandra-dir=/home/cassandra/cassandra --keep-test-dir $SPLIT_TESTS 2>&1 | tee /tmp/dtest/stdout.txt
+      - store_test_results:
+          path: /tmp/results
