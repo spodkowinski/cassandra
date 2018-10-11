@@ -97,10 +97,19 @@ with_dtests_jobs: &with_dtest_jobs
                   - build
             - j11_dtests-with-vnodes:
                 requires:
-                - start_j11_dtests
+                  - start_j11_dtests
             - j11_dtests-no-vnodes:
                 requires:
-                - start_j11_dtests
+                  - start_j11_dtests
+
+            # cqlsh dtests (on request)
+            - start_dtests_cqlsh:
+                type: approval
+                requires:
+                - build
+            - j8_dtests-cqlsh:
+                requires:
+                  - start_dtests_cqlsh
 
 with_dtest_jobs_only: &with_dtest_jobs_only
         jobs:
@@ -321,6 +330,29 @@ jobs:
     - run_dtests:
         file_tag: j11_without_vnodes
         pytest_extra_args: '--skip-resource-intensive-tests'
+
+  j8_dtests-cqlsh:
+    executor:
+      name: java8-executor
+      exec_resource_class: medium
+    parallelism: 4
+    steps:
+    - attach_workspace:
+        at: /home/cassandra
+    - clone_dtest
+    - create_venv
+    - create_dtest_containers:
+        file_tag: cqlsh
+        tests_filter_pattern: '^cqlsh_tests/'
+    - run_dtests:
+        file_tag: cqlsh
+        pytest_extra_args: '--execute-cqlsh-tests'
+    - store_artifacts:
+        path: /tmp/dtest
+        destination: j8_dtest_cqlsh
+    - store_artifacts:
+        path: ~/cassandra-dtest/logs
+        destination: j8_dtest_cqlsh_logs
 
 commands:
   log_environment:
