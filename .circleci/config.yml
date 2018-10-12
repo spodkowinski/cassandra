@@ -36,6 +36,49 @@ with_dtests_jobs: &with_dtest_jobs
             - j11_unit_tests:
                 requires:
                   - start_j11_unit_tests
+            # specialized unit tests (all run on request using Java 8)
+            - start_utests_long:
+                type: approval
+                requires:
+                  - build
+            - utests_long:
+                requires:
+                  - start_utests_long
+            - start_utests_burn:
+                type: approval
+                requires:
+                  - build
+            - utests_burn:
+                requires:
+                  - start_utests_burn
+            - start_utests_cql:
+                type: approval
+                requires:
+                  - build
+            - utests_cql:
+                requires:
+                  - start_utests_cql
+            - start_utests_compression:
+                type: approval
+                requires:
+                  - build
+            - utests_compression:
+                requires:
+                  - start_utests_compression
+            - start_utests_stress:
+                type: approval
+                requires:
+                  - build
+            - utests_stress:
+                requires:
+                  - start_utests_stress
+            - start_utests_fqltool:
+                type: approval
+                requires:
+                  - build
+            - utests_fqltool:
+                requires:
+                  - start_utests_fqltool
             # Java 8 dtests (on request)
             - start_j8_dtests:
                 type: approval
@@ -143,6 +186,73 @@ jobs:
     - create_junit_containers
     - log_environment
     - run_junit_tests
+
+  utests_long:
+    executor:
+      name: java8-executor
+      exec_resource_class: medium
+    parallelism: 1
+    steps:
+      - attach_workspace:
+          at: /home/cassandra
+      - run_junit_tests:
+          target: long-test
+
+  utests_burn:
+    executor:
+      name: java8-executor
+      exec_resource_class: medium
+    parallelism: 1
+    steps:
+      - attach_workspace:
+          at: /home/cassandra
+      - run_junit_tests:
+          target: test-burn
+          no_output_timeout: 45m
+
+  utests_cql:
+    executor:
+      name: java8-executor
+      exec_resource_class: medium
+    parallelism: 1
+    steps:
+      - attach_workspace:
+          at: /home/cassandra
+      - run_junit_tests:
+          target: cql-test
+
+  utests_compression:
+    executor:
+      name: java8-executor
+      exec_resource_class: medium
+    parallelism: 1
+    steps:
+      - attach_workspace:
+          at: /home/cassandra
+      - run_junit_tests:
+          target: test-compression
+
+  utests_stress:
+    executor:
+      name: java8-executor
+      exec_resource_class: medium
+    parallelism: 1
+    steps:
+      - attach_workspace:
+          at: /home/cassandra
+      - run_junit_tests:
+          target: stress-test
+
+  utests_fqltool:
+    executor:
+      name: java8-executor
+      exec_resource_class: medium
+    parallelism: 1
+    steps:
+      - attach_workspace:
+          at: /home/cassandra
+      - run_junit_tests:
+          target: fqltool-test
 
   j8_dtests-with-vnodes:
     executor:
@@ -303,17 +413,24 @@ commands:
         no_output_timeout: 15m
 
   run_junit_tests:
+    parameters:
+      target:
+        type: string
+        default: testclasslist
+      no_output_timeout:
+        type: string
+        default: 15m
     steps:
     - run:
-        name: Run Unit Tests
+        name: Run Unit Tests (<<parameters.target>>)
         # Please note that we run `clean` ant therefore rebuild the project, as we can't run tests on Java 8 in case
         # based on Java 11 builds.
         command: |
           export PATH=$JAVA_HOME/bin:$PATH
           time mv ~/cassandra /tmp
           cd /tmp/cassandra
-          ant clean testclasslist -Dtest.classlistfile=/tmp/java_tests_${CIRCLE_NODE_INDEX}_final.txt
-        no_output_timeout: 15m
+          ant clean <<parameters.target>> -Dtest.classlistfile=/tmp/java_tests_${CIRCLE_NODE_INDEX}_final.txt
+        no_output_timeout: <<parameters.no_output_timeout>>
     - store_test_results:
         path: /tmp/cassandra/build/test/output/
     - store_artifacts:
