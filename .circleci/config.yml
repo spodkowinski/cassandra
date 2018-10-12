@@ -14,12 +14,35 @@ default_env_vars: &default_env_vars
     CASS_DRIVER_NO_CYTHON: true
     #Skip all syncing to disk to avoid performance issues in flaky CI environments
     CASSANDRA_SKIP_SYNC: true
-    # Paid account users: override the following in a org context or your project's environment variable settings!
-    CCM_MAX_HEAP_SIZE: 1024M #2048M
-    CCM_HEAP_NEWSIZE: 256M #512M
-    # You may also want to (temporarily) override the dtest git repo
     DTEST_REPO: git://github.com/apache/cassandra-dtest.git
     DTEST_BRANCH: master
+
+    # ~~~~ UNCOMMENT FOR HIGH RESOURCE SETTINGS ~~~~
+    CCM_MAX_HEAP_SIZE: 1024M
+    CCM_HEAP_NEWSIZE: 256M
+    #CCM_MAX_HEAP_SIZE: 2048M
+    #CCM_HEAP_NEWSIZE: 512M
+
+# ~~~~ UNCOMMENT FOR HIGH RESOURCE SETTINGS ~~~~
+j8_par_executor: &j8_par_executor
+  executor:
+    name: java8-executor
+    #exec_resource_class: xlarge
+  parallelism: 4
+  #parallelism: 100
+
+j8_seq_executor: &j8_seq_executor
+  executor:
+    name: java8-executor
+    #exec_resource_class: xlarge
+  parallelism: 1 # sequential, single container tests: no parallelism benefits
+
+j11_par_executor: &j11_par_executor
+  executor:
+    name: java11-executor
+    #exec_resource_class: xlarge
+  parallelism: 4
+  #parallelism: 100
 
 with_dtests_jobs: &with_dtest_jobs
         jobs:
@@ -164,10 +187,7 @@ jobs:
                 - .m2
 
   j8_unit_tests:
-    executor:
-      name: java8-executor
-      exec_resource_class: medium # TODO: how can we parameterize this from the outside?
-    parallelism: 4 # TODO: how can we parameterize this from the outside?
+    <<: *j8_par_executor
     steps:
       - attach_workspace:
           at: /home/cassandra
@@ -176,10 +196,7 @@ jobs:
       - run_junit_tests
 
   j11_unit_tests:
-    executor:
-      name: java11-executor
-      exec_resource_class: medium
-    parallelism: 4
+    <<: *j11_par_executor
     steps:
     - attach_workspace:
         at: /home/cassandra
@@ -188,10 +205,7 @@ jobs:
     - run_junit_tests
 
   utests_long:
-    executor:
-      name: java8-executor
-      exec_resource_class: medium
-    parallelism: 1
+    <<: *j8_seq_executor
     steps:
       - attach_workspace:
           at: /home/cassandra
@@ -199,10 +213,7 @@ jobs:
           target: long-test
 
   utests_burn:
-    executor:
-      name: java8-executor
-      exec_resource_class: medium
-    parallelism: 1
+    <<: *j8_seq_executor
     steps:
       - attach_workspace:
           at: /home/cassandra
@@ -211,10 +222,7 @@ jobs:
           no_output_timeout: 45m
 
   utests_cql:
-    executor:
-      name: java8-executor
-      exec_resource_class: medium
-    parallelism: 1
+    <<: *j8_seq_executor
     steps:
       - attach_workspace:
           at: /home/cassandra
@@ -222,10 +230,7 @@ jobs:
           target: cql-test
 
   utests_compression:
-    executor:
-      name: java8-executor
-      exec_resource_class: medium
-    parallelism: 1
+    <<: *j8_seq_executor
     steps:
       - attach_workspace:
           at: /home/cassandra
@@ -233,10 +238,7 @@ jobs:
           target: test-compression
 
   utests_stress:
-    executor:
-      name: java8-executor
-      exec_resource_class: medium
-    parallelism: 1
+    <<: *j8_seq_executor
     steps:
       - attach_workspace:
           at: /home/cassandra
@@ -244,10 +246,7 @@ jobs:
           target: stress-test
 
   utests_fqltool:
-    executor:
-      name: java8-executor
-      exec_resource_class: medium
-    parallelism: 1
+    <<: *j8_seq_executor
     steps:
       - attach_workspace:
           at: /home/cassandra
@@ -255,10 +254,7 @@ jobs:
           target: fqltool-test
 
   j8_dtests-with-vnodes:
-    executor:
-      name: java8-executor
-      exec_resource_class: xlarge
-    parallelism: 100
+    <<: *j8_par_executor
     steps:
       - attach_workspace:
           at: /home/cassandra
@@ -272,10 +268,7 @@ jobs:
           pytest_extra_args: '--use-vnodes --num-tokens=32 --skip-resource-intensive-tests'
 
   j11_dtests-with-vnodes:
-    executor:
-      name: java11-executor
-      exec_resource_class: xlarge
-    parallelism: 100
+    <<: *j11_par_executor
     steps:
     - attach_workspace:
         at: /home/cassandra
@@ -289,10 +282,7 @@ jobs:
         pytest_extra_args: '--use-vnodes --num-tokens=32 --skip-resource-intensive-tests'
 
   j8_dtests-no-vnodes:
-    executor:
-      name: java8-executor
-      exec_resource_class: xlarge
-    parallelism: 100
+    <<: *j8_par_executor
     steps:
       - attach_workspace:
           at: /home/cassandra
@@ -306,10 +296,7 @@ jobs:
           pytest_extra_args: '--skip-resource-intensive-tests'
 
   j11_dtests-no-vnodes:
-    executor:
-      name: java11-executor
-      exec_resource_class: xlarge
-    parallelism: 100
+    <<: *j11_par_executor
     steps:
     - attach_workspace:
         at: /home/cassandra
