@@ -155,22 +155,31 @@ public class CoordinatorSession extends ConsistentSession
     {
         if (getState() == State.FAILED)
         {
-            logger.trace("Incremental repair session {} has failed, ignoring prepare response from {}", sessionID, participant);
+            logger.error("Unexpected prepare response from {} while incremental repair session {} has already failed", participant, sessionID);
+            return;
         }
-        else if (!success)
+        if (!success)
         {
-            logger.debug("{} failed the prepare phase for incremental repair session {}. Aborting session", participant, sessionID);
-            fail();
-            prepareFuture.set(false);
+            logger.debug("{} failed the prepare phase for incremental repair session {}", participant, sessionID);
+            setParticipantState(participant, State.FAILED);
         }
         else
         {
             logger.trace("Successful prepare response received from {} for repair session {}", participant, sessionID);
             setParticipantState(participant, State.PREPARED);
+        }
+
+        // complete or fail prepare phase after all participants have been able to reply
+        if(!Iterables.any(participantStates.values(), v -> v == State.PREPARING)) {
             if (getState() == State.PREPARED)
             {
-                logger.debug("Incremental repair session {} successfully prepared.", sessionID);
+                logger.info("Incremental repair session {} successfully prepared.", sessionID);
                 prepareFuture.set(true);
+            }
+            else
+            {
+                fail();
+                prepareFuture.set(false);
             }
         }
     }
