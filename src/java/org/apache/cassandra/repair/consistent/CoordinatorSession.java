@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 
 import javax.annotation.Nullable;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.AsyncFunction;
@@ -93,6 +94,12 @@ public class CoordinatorSession extends ConsistentSession
     {
         logger.trace("Setting coordinator state to {} for repair {}", state, sessionID);
         super.setState(state);
+    }
+
+    @VisibleForTesting
+    synchronized State getParticipantState(InetAddressAndPort participant)
+    {
+        return participantStates.get(participant);
     }
 
     public synchronized void setParticipantState(InetAddressAndPort participant, State state)

@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -373,6 +374,32 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
                                                                  PreviewKind.NONE);
         CompactionManager.instance.performAnticompaction(result.cfs, atEndpoint(FULL_RANGE, NO_RANGES), result.refs, result.txn, sessionID, () -> false);
 
+    }
+
+    @Test (expected = CompactionInterruptedException.class)
+    public void cancelledAntiCompaction() throws Exception
+    {
+        cfs.disableAutoCompaction();
+        makeSSTables(1);
+
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, UUIDGen.getTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
+        UUID sessionID = UUIDGen.getTimeUUID();
+        ActiveRepairService.instance.registerParentRepairSession(sessionID,
+                                                                 InetAddressAndPort.getByName("127.0.0.1"),
+                                                                 Lists.newArrayList(cfs),
+                                                                 FULL_RANGE,
+                                                                 true,0,
+                                                                 true,
+                                                                 PreviewKind.NONE);
+
+        // attempt to anti-compact the sstable in half
+        SSTableReader sstable = Iterables.getOnlyElement(cfs.getLiveSSTables());
+        Token left = cfs.getPartitioner().midpoint(sstable.first.getToken(), sstable.last.getToken());
+        Token right = sstable.last.getToken();
+        CompactionManager.instance.performAnticompaction(result.cfs,
+                                                         atEndpoint(Collections.singleton(new Range<>(left, right)), NO_RANGES),
+                                                         result.refs, result.txn, sessionID, () -> true);
     }
 
     /**

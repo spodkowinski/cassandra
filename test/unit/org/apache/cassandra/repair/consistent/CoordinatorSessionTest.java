@@ -379,14 +379,22 @@ public class CoordinatorSessionTest extends AbstractRepairTest
 
         coordinator.handlePrepareResponse(PARTICIPANT1, true);
         Assert.assertEquals(ConsistentSession.State.PREPARING, coordinator.getState());
+        Assert.assertEquals(PREPARED, coordinator.getParticipantState(PARTICIPANT1));
         Assert.assertFalse(sessionResult.isDone());
 
         // participant 2 fails to prepare for consistent repair
         Assert.assertFalse(coordinator.failCalled);
         coordinator.handlePrepareResponse(PARTICIPANT2, false);
         Assert.assertEquals(ConsistentSession.State.PREPARING, coordinator.getState());
+        // we should have sent failure messages to the other participants, but not yet marked them failed internally
+        assertMessageSent(coordinator, PARTICIPANT1, new FailSession(coordinator.sessionID));
+        assertMessageSent(coordinator, PARTICIPANT3, new FailSession(coordinator.sessionID));
+        Assert.assertEquals(FAILED, coordinator.getParticipantState(PARTICIPANT2));
+        Assert.assertEquals(PREPARED, coordinator.getParticipantState(PARTICIPANT1));
+        Assert.assertEquals(PREPARING, coordinator.getParticipantState(PARTICIPANT3));
         Assert.assertFalse(sessionResult.isDone());
         Assert.assertFalse(coordinator.failCalled);
+        coordinator.sentMessages.clear();
 
         // last outstanding response should cause repair to complete in failed state
         Assert.assertFalse(coordinator.setRepairingCalled);
