@@ -632,6 +632,7 @@ public class LocalSessions
                     else
                     {
                         logger.info("Session {} failed before anticompaction completed", sessionID);
+                        sendMessage(coordinator, new PrepareConsistentResponse(sessionID, getBroadcastAddressAndPort(), false));
                     }
                 }
                 finally

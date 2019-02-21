@@ -153,15 +153,11 @@ public class CoordinatorSession extends ConsistentSession
 
     public synchronized void handlePrepareResponse(InetAddressAndPort participant, boolean success)
     {
-        if (getState() == State.FAILED)
-        {
-            logger.error("Unexpected prepare response from {} while incremental repair session {} has already failed", participant, sessionID);
-            return;
-        }
         if (!success)
         {
             logger.debug("{} failed the prepare phase for incremental repair session {}", participant, sessionID);
             setParticipantState(participant, State.FAILED);
+            sendFailureMessageToParticipants();
         }
         else
         {
@@ -169,18 +165,19 @@ public class CoordinatorSession extends ConsistentSession
             setParticipantState(participant, State.PREPARED);
         }
 
-        // complete or fail prepare phase after all participants have been able to reply
-        if(!Iterables.any(participantStates.values(), v -> v == State.PREPARING)) {
-            if (getState() == State.PREPARED)
-            {
-                logger.info("Incremental repair session {} successfully prepared.", sessionID);
-                prepareFuture.set(true);
-            }
-            else
-            {
-                fail();
-                prepareFuture.set(false);
-            }
+        // don't progress until we've heard from all replicas
+        if(Iterables.any(participantStates.values(), v -> v == State.PREPARING))
+            return;
+
+        if (getState() == State.PREPARED)
+        {
+            logger.info("Incremental repair session {} successfully prepared.", sessionID);
+            prepareFuture.set(true);
+        }
+        else
+        {
+            fail();
+            prepareFuture.set(false);
         }
     }
 
@@ -238,9 +235,8 @@ public class CoordinatorSession extends ConsistentSession
         logger.info("Incremental repair session {} completed", sessionID);
     }
 
-    public synchronized void fail()
+    private void sendFailureMessageToParticipants()
     {
-        logger.info("Incremental repair session {} failed", sessionID);
         FailSession message = new FailSession(sessionID);
         for (final InetAddressAndPort participant : participants)
         {
@@ -249,6 +245,12 @@ public class CoordinatorSession extends ConsistentSession
                 sendMessage(participant, message);
             }
         }
+    }
+
+    public synchronized void fail()
+    {
+        logger.info("Incremental repair session {} failed", sessionID);
+        sendFailureMessageToParticipants();
         setAll(State.FAILED);
 
         String exceptionMsg = String.format("Incremental repair session %s has failed", sessionID);
