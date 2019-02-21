@@ -33,6 +33,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -550,9 +551,10 @@ public class LocalSessions
                                     UUID sessionID,
                                     Collection<ColumnFamilyStore> tables,
                                     RangesAtEndpoint tokenRanges,
-                                    ExecutorService executor)
+                                    ExecutorService executor,
+                                    BooleanSupplier isCancelled)
     {
-        return repairManager.prepareIncrementalRepair(sessionID, tables, tokenRanges, executor);
+        return repairManager.prepareIncrementalRepair(sessionID, tables, tokenRanges, executor, isCancelled);
     }
 
     RangesAtEndpoint filterLocalRanges(String keyspace, Set<Range<Token>> ranges)
@@ -612,7 +614,8 @@ public class LocalSessions
 
         KeyspaceRepairManager repairManager = parentSession.getKeyspace().getRepairManager();
         RangesAtEndpoint tokenRanges = filterLocalRanges(parentSession.getKeyspace().getName(), parentSession.getRanges());
-        ListenableFuture repairPreparation = prepareSession(repairManager, sessionID, parentSession.getColumnFamilyStores(), tokenRanges, executor);
+        ListenableFuture repairPreparation = prepareSession(repairManager, sessionID, parentSession.getColumnFamilyStores(),
+                                                            tokenRanges, executor, () -> session.getState() != PREPARING);
 
         Futures.addCallback(repairPreparation, new FutureCallback<Object>()
         {
