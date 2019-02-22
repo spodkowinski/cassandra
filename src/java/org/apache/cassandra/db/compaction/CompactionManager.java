@@ -721,6 +721,7 @@ public class CompactionManager implements CompactionManagerMBean
      * @param replicas token ranges to be repaired
      * @param validatedForRepair SSTables containing the repaired ranges. Should be referenced before passing them.
      * @param sessionID the repair session we're anti-compacting for
+     * @param isCancelled function that indicates if active anti-compaction should be canceled
      * @throws InterruptedException
      * @throws IOException
      */
@@ -1435,6 +1436,8 @@ public class CompactionManager implements CompactionManagerMBean
      * @param txn a transaction over the repaired sstables to anticompact
      * @param ranges full and transient ranges to be placed into one of the new sstables. The repaired table will be tracked via
      *   the {@link org.apache.cassandra.io.sstable.metadata.StatsMetadata#pendingRepair} field.
+     * @param sessionID the repair session we're anti-compacting for
+     * @param isCancelled function that indicates if active anti-compaction should be canceled
      */
     private void doAntiCompaction(ColumnFamilyStore cfs,
                                   RangesAtEndpoint ranges,
