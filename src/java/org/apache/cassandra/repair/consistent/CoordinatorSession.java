@@ -163,8 +163,8 @@ public class CoordinatorSession extends ConsistentSession
         if (!success)
         {
             logger.debug("{} failed the prepare phase for incremental repair session {}", participant, sessionID);
-            setParticipantState(participant, State.FAILED);
             sendFailureMessageToParticipants();
+            setParticipantState(participant, State.FAILED);
         }
         else
         {

@@ -388,6 +388,7 @@ public class CoordinatorSessionTest extends AbstractRepairTest
         Assert.assertEquals(ConsistentSession.State.PREPARING, coordinator.getState());
         // we should have sent failure messages to the other participants, but not yet marked them failed internally
         assertMessageSent(coordinator, PARTICIPANT1, new FailSession(coordinator.sessionID));
+        assertMessageSent(coordinator, PARTICIPANT2, new FailSession(coordinator.sessionID));
         assertMessageSent(coordinator, PARTICIPANT3, new FailSession(coordinator.sessionID));
         Assert.assertEquals(FAILED, coordinator.getParticipantState(PARTICIPANT2));
         Assert.assertEquals(PREPARED, coordinator.getParticipantState(PARTICIPANT1));
