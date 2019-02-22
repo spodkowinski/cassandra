@@ -524,11 +524,17 @@ public class LocalSessions
 
     public void failSession(UUID sessionID, boolean sendMessage)
     {
-        logger.info("Failing local repair session {}", sessionID);
         LocalSession session = getSession(sessionID);
         if (session != null)
         {
-            setStateAndSave(session, FAILED);
+            synchronized (session)
+            {
+                if (session.getState() != FAILED)
+                {
+                    logger.info("Failing local repair session {}", sessionID);
+                    setStateAndSave(session, FAILED);
+                }
+            }
             if (sendMessage)
             {
                 sendMessage(session.coordinator, new FailSession(sessionID));
