@@ -330,6 +330,9 @@ public class CoordinatorSession extends ConsistentSession
             }
         }, MoreExecutors.directExecutor());
 
+        // return execution result as set by following callback
+        SettableFuture<Boolean> resultFuture = SettableFuture.create();
+
         // commit repaired data
         Futures.addCallback(proposeFuture, new FutureCallback<Boolean>()
         {
@@ -352,6 +355,7 @@ public class CoordinatorSession extends ConsistentSession
                     hasFailure.set(true);
                     fail();
                 }
+                resultFuture.set(result);
             }
 
             public void onFailure(Throwable t)
@@ -362,9 +366,10 @@ public class CoordinatorSession extends ConsistentSession
                 }
                 hasFailure.set(true);
                 fail();
+                resultFuture.setException(t);
             }
         });
 
-        return proposeFuture;
+        return resultFuture;
     }
 }
