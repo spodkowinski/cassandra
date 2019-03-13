@@ -124,10 +124,29 @@ with_dtest_jobs_only: &with_dtest_jobs_only
                   requires:
                       - build
 
+nightly_jobs: &nightly_jobs
+         - build
+         - j8_dtests-with-vnodes:
+              requires:
+                   - build
+         - j8_dtests-no-vnodes:
+              requires:
+                   - build
+
+
 workflows:
     version: 2
     build_and_run_tests: *with_dtest_jobs
     #build_and_run_tests: *with_dtest_jobs_only
+    nightly:
+         triggers:
+            - schedule:
+               cron: "30 8 * * *"
+               filters:
+                  branches:
+                     only:
+                        - trunk
+         jobs: *nightly_jobs
 
 executors:
   java8-executor:

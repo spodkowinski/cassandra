@@ -221,7 +221,7 @@ jobs:
           \ executed on every circle container\n# so the goal here is to get the circleci\
           \ script to return the tests *this* container will run\n# which we do via\
           \ the `circleci` cli tool.\n\ncd cassandra-dtest\nsource ~/env/bin/activate\n\
-          export PATH=$JAVA_HOME/bin:$PATH\n\nif [ -z '' ]; then\n  export \nfi\n\n\
+          export PATH=$JAVA_HOME/bin:$PATH\n\nif [ -n '' ]; then\n  export \nfi\n\n\
           echo \"***Collected DTests (j11_with_vnodes)***\"\nset -eo pipefail && ./run_dtests.py\
           \ --use-vnodes --skip-resource-intensive-tests --dtest-print-tests-only\
           \ --dtest-print-tests-output=/tmp/all_dtest_tests_j11_with_vnodes_raw --cassandra-dir=../cassandra\n\
@@ -237,7 +237,7 @@ jobs:
         no_output_timeout: 15m
         command: "echo \"cat /tmp/split_dtest_tests_j11_with_vnodes_final.txt\"\n\
           cat /tmp/split_dtest_tests_j11_with_vnodes_final.txt\n\nsource ~/env/bin/activate\n\
-          export PATH=$JAVA_HOME/bin:$PATH\nif [ -z '' ]; then\n  export \nfi\n\n\
+          export PATH=$JAVA_HOME/bin:$PATH\nif [ -n '' ]; then\n  export \nfi\n\n\
           java -version\ncd ~/cassandra-dtest\nmkdir -p /tmp/dtest\n\necho \"env:\
           \ $(env)\"\necho \"** done env\"\nmkdir -p /tmp/results/dtests\n# we need\
           \ the \"set -o pipefail\" here so that the exit code that circleci will\
@@ -857,7 +857,7 @@ jobs:
           \ executed on every circle container\n# so the goal here is to get the circleci\
           \ script to return the tests *this* container will run\n# which we do via\
           \ the `circleci` cli tool.\n\ncd cassandra-dtest\nsource ~/env/bin/activate\n\
-          export PATH=$JAVA_HOME/bin:$PATH\n\nif [ -z '' ]; then\n  export \nfi\n\n\
+          export PATH=$JAVA_HOME/bin:$PATH\n\nif [ -n '' ]; then\n  export \nfi\n\n\
           echo \"***Collected DTests (j11_without_vnodes)***\"\nset -eo pipefail &&\
           \ ./run_dtests.py --skip-resource-intensive-tests --dtest-print-tests-only\
           \ --dtest-print-tests-output=/tmp/all_dtest_tests_j11_without_vnodes_raw\
@@ -874,7 +874,7 @@ jobs:
         no_output_timeout: 15m
         command: "echo \"cat /tmp/split_dtest_tests_j11_without_vnodes_final.txt\"\
           \ncat /tmp/split_dtest_tests_j11_without_vnodes_final.txt\n\nsource ~/env/bin/activate\n\
-          export PATH=$JAVA_HOME/bin:$PATH\nif [ -z '' ]; then\n  export \nfi\n\n\
+          export PATH=$JAVA_HOME/bin:$PATH\nif [ -n '' ]; then\n  export \nfi\n\n\
           java -version\ncd ~/cassandra-dtest\nmkdir -p /tmp/dtest\n\necho \"env:\
           \ $(env)\"\necho \"** done env\"\nmkdir -p /tmp/results/dtests\n# we need\
           \ the \"set -o pipefail\" here so that the exit code that circleci will\
@@ -1068,6 +1068,22 @@ workflows:
     - j8_upgradetests-no-vnodes:
         requires:
         - start_upgrade_tests
+  nightly:
+    triggers:
+    - schedule:
+        cron: 30 8 * * *
+        filters:
+          branches:
+            only:
+            - trunk
+    jobs:
+    - build
+    - j8_dtests-with-vnodes:
+        requires:
+        - build
+    - j8_dtests-no-vnodes:
+        requires:
+        - build
 
 # Original config.yml file:
 # version: 2.1
@@ -1196,10 +1212,29 @@ workflows:
 #                   requires:
 #                       - build
 # 
+# nightly_jobs: &nightly_jobs
+#          - build
+#          - j8_dtests-with-vnodes:
+#               requires:
+#                    - build
+#          - j8_dtests-no-vnodes:
+#               requires:
+#                    - build
+# 
+# 
 # workflows:
 #     version: 2
 #     build_and_run_tests: *with_dtest_jobs
 #     #build_and_run_tests: *with_dtest_jobs_only
+#     nightly:
+#          triggers:
+#             - schedule:
+#                cron: \"30 8 * * *\"
+#                filters:
+#                   branches:
+#                      only:
+#                         - trunk
+#          jobs: *nightly_jobs
 # 
 # executors:
 #   java8-executor:
