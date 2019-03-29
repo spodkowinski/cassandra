@@ -662,7 +662,7 @@ class TestCqlshOutput(BaseTestCase):
                 AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
                 AND comment = ''
                 AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
-                AND compression = {'chunk_length_in_kb': '64', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+                AND compression = {'chunk_length_in_kb': '16', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
                 AND crc_check_chance = 1.0
                 AND dclocal_read_repair_chance = 0.0
                 AND default_time_to_live = 0
@@ -671,18 +671,16 @@ class TestCqlshOutput(BaseTestCase):
                 AND memtable_flush_period_in_ms = 0
                 AND min_index_interval = 128
                 AND read_repair_chance = 0.0
-                AND speculative_retry = '99PERCENTILE'
-                AND additional_write_policy = '99PERCENTILE';
->>>>>>> Python 2/3 cross compatible cqlsh and cqlshlib
-
-        """ % quote_name(get_keyspace()))
+                AND speculative_retry = '99p';
+            """ % quote_name(get_keyspace()))
+#                AND additional_write_policy = '99p';""" % quote_name(get_keyspace()))
 
         with testrun_cqlsh(tty=True, env=self.default_env) as c:
             for cmdword in ('describe table', 'desc columnfamily'):
                 for semicolon in (';', ''):
                     output = c.cmd_and_response('%s has_all_types%s' % (cmdword, semicolon))
                     self.assertNoHasColors(output)
-                    self.assertSequenceEqual(output.split('\n'), table_desc3.split('\n'))
+                    self.assertSequenceEqual(dedent(output).split('\n'), table_desc3.split('\n'))
 
     def test_describe_columnfamilies_output(self):
         output_re = r'''
