@@ -443,6 +443,7 @@ class Shell(cmd.Cmd):
     show_line_nums = False
     debug = False
     coverage = False
+    coveragerc_path = None
     stop = False
     last_hist = None
     shunted_query_out = None
