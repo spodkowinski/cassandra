@@ -641,7 +641,6 @@ class TestCqlshOutput(BaseTestCase):
         
         # note columns are now comparator-ordered instead of original-order.
         table_desc3 = dedent("""
-
             CREATE TABLE %s.has_all_types (
                 num int PRIMARY KEY,
                 asciicol ascii,
