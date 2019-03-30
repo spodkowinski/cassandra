@@ -19,7 +19,7 @@ from io import StringIO
 from queue import Queue, Empty
 
 
-class WinPty:
+class WinPty(object):
 
     def __init__(self, stdin):
         self._s = stdin
