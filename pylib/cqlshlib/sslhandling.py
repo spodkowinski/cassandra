@@ -16,8 +16,12 @@
 
 import os
 import sys
-import configparser
 import ssl
+
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 
 
 def ssl_settings(host, config_file, env=os.environ):

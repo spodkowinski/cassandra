@@ -54,7 +54,7 @@ try:
     from io import StringIO
 except ImportError:
     import ConfigParser as configparser
-    import StringIO
+    from StringIO import StringIO
 
 if sys.version_info[0] != 3 and (sys.version_info[0] == 2 and sys.version_info[1] != 7):
     sys.exit("\nCQL Shell supports only Python 3 or Python 2.7\n")
