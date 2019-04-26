@@ -39,7 +39,6 @@ import getpass
 import optparse
 import os
 import platform
-import six
 import sys
 import traceback
 import warnings
@@ -147,6 +146,8 @@ for lib in third_parties:
     lib_zip = find_zip(lib)
     if lib_zip:
         sys.path.insert(0, lib_zip)
+
+import six
 
 warnings.filterwarnings("ignore", r".*blist.*")
 try:
