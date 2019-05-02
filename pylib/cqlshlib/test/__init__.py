@@ -16,5 +16,5 @@
 
 from .cassconnect import create_db, remove_db
 
-setUp = create_db
-tearDown = remove_db
+#setUp = create_db
+#tearDown = remove_db
