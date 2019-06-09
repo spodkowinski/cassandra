@@ -708,9 +708,10 @@ class Shell(cmd.Cmd):
 
     # TODO remove after virtual tables are added to connection metadata
     def init_virtual_keyspaces_meta(self):
-        self.virtual_keyspaces = {}
+        tmp = {}
         for vkeyspace in self.fetch_virtual_keyspaces():
-            self.virtual_keyspaces[vkeyspace.name] = vkeyspace
+            tmp[vkeyspace.name] = vkeyspace
+        self.virtual_keyspaces = tmp;
 
     # TODO remove after virtual tables are added to connection metadata
     def fetch_virtual_keyspaces(self):
@@ -731,7 +732,8 @@ class Shell(cmd.Cmd):
     def fetch_virtual_tables(self, keyspace_name):
         tables = []
 
-        result = self.session.execute("SELECT * FROM system_virtual_schema.tables WHERE keyspace_name = {!r};".format(keyspace_name))
+        query = "SELECT * FROM system_virtual_schema.tables WHERE keyspace_name = '{}';".format(keyspace_name)
+        result = self.session.execute(query)
         for row in result:
             name = row['table_name']
             table = TableMetadata(keyspace_name, name)
@@ -742,7 +744,7 @@ class Shell(cmd.Cmd):
 
     # TODO remove after virtual tables are added to connection metadata
     def fetch_virtual_columns(self, table):
-        result = self.session.execute("SELECT * FROM system_virtual_schema.columns WHERE keyspace_name = {!r} AND table_name = {!r};".format(table.keyspace_name, table.name))
+        result = self.session.execute("SELECT * FROM system_virtual_schema.columns WHERE keyspace_name = '{}' AND table_name = '{}';".format(table.keyspace_name, table.name))
 
         partition_key_columns = []
         clustering_columns = []
