@@ -48,5 +48,5 @@ for interpreter in python python3 python2.7; do
 	fi
 done
 
-echo "No appropriate python interpreter found." >&2
+echo "No appropriate Python interpreter found." >&2
 exit 1

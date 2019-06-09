@@ -55,7 +55,7 @@ except ImportError:
     import ConfigParser as configparser
     from StringIO import StringIO
 
-if sys.version_info[0] != 3 and (sys.version_info[0] == 2 and sys.version_info[1] != 7):
+if sys.version_info.major != 3 and (sys.version_info.major == 2 and sys.version_info.minor != 7):
     sys.exit("\nCQL Shell supports only Python 3 or Python 2.7\n")
 
 # see CASSANDRA-10428
@@ -690,7 +690,7 @@ class Shell(cmd.Cmd):
         try:
             user_type = ks_meta.user_types[typename]
         except KeyError:
-            raise UserTypeNotFound("User type '{}' not found".format(typename))
+            raise UserTypeNotFound("User type {!r} not found".format(typename))
 
         return list(zip(user_type.field_names, user_type.field_types))
 
@@ -749,7 +749,7 @@ class Shell(cmd.Cmd):
     def fetch_virtual_tables(self, keyspace_name):
         tables = []
 
-        result = self.session.execute("SELECT * FROM system_virtual_schema.tables WHERE keyspace_name = '{}';".format(keyspace_name))
+        result = self.session.execute("SELECT * FROM system_virtual_schema.tables WHERE keyspace_name = {!r};".format(keyspace_name))
         for row in result:
             name = row['table_name']
             table = TableMetadata(keyspace_name, name)
@@ -760,7 +760,7 @@ class Shell(cmd.Cmd):
 
     # TODO remove after virtual tables are added to connection metadata
     def fetch_virtual_columns(self, table):
-        result = self.session.execute("SELECT * FROM system_virtual_schema.columns WHERE keyspace_name = '{}' AND table_name = '{}';".format(table.keyspace_name, table.name))
+        result = self.session.execute("SELECT * FROM system_virtual_schema.columns WHERE keyspace_name = {!r} AND table_name = {!r};".format(table.keyspace_name, table.name))
 
         partition_key_columns = []
         clustering_columns = []
@@ -801,7 +801,7 @@ class Shell(cmd.Cmd):
             if ksname == 'system_auth' and tablename in ['roles', 'role_permissions']:
                 self.get_fake_auth_table_meta(ksname, tablename)
             else:
-                raise ColumnFamilyNotFound("Column family '{}' not found".format(tablename))
+                raise ColumnFamilyNotFound("Column family {!r} not found".format(tablename))
         else:
             return ksmeta.tables[tablename]
 
@@ -822,7 +822,7 @@ class Shell(cmd.Cmd):
             table_meta.columns['resource'] = ColumnMetadata(table_meta, 'resource', cassandra.cqltypes.UTF8Type)
             table_meta.columns['permission'] = ColumnMetadata(table_meta, 'permission', cassandra.cqltypes.UTF8Type)
         else:
-            raise ColumnFamilyNotFound("Column family '{}' not found".format(tablename))
+            raise ColumnFamilyNotFound("Column family {!r} not found".format(tablename))
 
     def get_index_meta(self, ksname, idxname):
         if ksname is None:
@@ -830,7 +830,7 @@ class Shell(cmd.Cmd):
         ksmeta = self.get_keyspace_meta(ksname)
 
         if idxname not in ksmeta.indexes:
-            raise IndexNotFound("Index '{}' not found".format(idxname))
+            raise IndexNotFound("Index {!r} not found".format(idxname))
 
         return ksmeta.indexes[idxname]
 
@@ -840,7 +840,7 @@ class Shell(cmd.Cmd):
         ksmeta = self.get_keyspace_meta(ksname)
 
         if viewname not in ksmeta.views:
-            raise MaterializedViewNotFound("Materialized view '{}' not found".format(viewname))
+            raise MaterializedViewNotFound("Materialized view {!r} not found".format(viewname))
         return ksmeta.views[viewname]
 
     def get_object_meta(self, ks, name):
@@ -848,7 +848,7 @@ class Shell(cmd.Cmd):
             if ks and ks in self.conn.metadata.keyspaces:
                 return self.conn.metadata.keyspaces[ks]
             elif self.current_keyspace is None:
-                raise ObjectNotFound("'{}' not found in keyspaces".format(ks))
+                raise ObjectNotFound("{!r} not found in keyspaces".format(ks))
             else:
                 name = ks
                 ks = self.current_keyspace
@@ -865,7 +865,7 @@ class Shell(cmd.Cmd):
         elif name in ksmeta.views:
             return ksmeta.views[name]
 
-        raise ObjectNotFound("'{}' not found in keyspace '{}'".format(name, ks))
+        raise ObjectNotFound("{!r} not found in keyspace {!r}".format(name, ks))
 
     def get_usertypes_meta(self):
         data = self.session.execute("select * from system.schema_usertypes")
@@ -1147,7 +1147,7 @@ class Shell(cmd.Cmd):
             try:
                 return self.get_view_meta(ks, name)
             except MaterializedViewNotFound:
-                raise ObjectNotFound("'{}' not found in keyspace '{}'".format(name, ks))
+                raise ObjectNotFound("{!r} not found in keyspace {!r}".format(name, ks))
 
     def parse_for_update_meta(self, query_string):
         try:
@@ -1466,7 +1466,7 @@ class Shell(cmd.Cmd):
         ksmeta = self.get_keyspace_meta(ksname)
         functions = [f for f in list(ksmeta.functions.values()) if f.name == functionname]
         if len(functions) == 0:
-            raise FunctionNotFound("User defined function '{}' not found".format(functionname))
+            raise FunctionNotFound("User defined function {!r} not found".format(functionname))
         print("\n\n".join(func.export_as_string() for func in functions))
         print('')
 
@@ -1491,7 +1491,7 @@ class Shell(cmd.Cmd):
         ksmeta = self.get_keyspace_meta(ksname)
         aggregates = [f for f in list(ksmeta.aggregates.values()) if f.name == aggregatename]
         if len(aggregates) == 0:
-            raise FunctionNotFound("User defined aggregate '{}' not found".format(aggregatename))
+            raise FunctionNotFound("User defined aggregate {!r} not found".format(aggregatename))
         print("\n\n".join(aggr.export_as_string() for aggr in aggregates))
         print('')
 
@@ -1517,7 +1517,7 @@ class Shell(cmd.Cmd):
         try:
             usertype = ksmeta.user_types[typename]
         except KeyError:
-            raise UserTypeNotFound("User type '{}' not found".format(typename))
+            raise UserTypeNotFound("User type {!r} not found".format(typename))
         print(usertype.export_as_string())
 
     def _columnize_unicode(self, name_list, quote=False):

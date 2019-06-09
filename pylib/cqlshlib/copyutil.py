@@ -2512,16 +2512,8 @@ class ImportProcess(ChildProcess):
             for i, value in enumerate(row):
                 if i in conv.primary_key_indexes:
                     where_clause.append(ImportConversion.text_wrapper("{}={}").format(self.valid_columns[i], value))
-                    #if six.PY2:
-                    #    where_clause.append("{}={}".format(unicode(self.valid_columns[i], encoding='utf-8'), unicode(value, encoding='utf-8')))
-                    #else:
-                    #    where_clause.append("{}={}".format(self.valid_columns[i], value))
                 else:
                     set_clause.append(ImportConversion.text_wrapper("{}={}+{}").format(self.valid_columns[i], self.valid_columns[i], value))
-                    #if six.PY2:
-                    #    set_clause.append("{}={}+{}".format(unicode(self.valid_columns[i], encoding='utf-8'), unicode(self.valid_columns[i], encoding='utf-8'), value))
-                    #else:
-                    #    set_clause.append("{}={}+{}".format(self.valid_columns[i], self.valid_columns[i], value))
             full_query_text = query % (ImportConversion.text_wrapper(',').join(set_clause), ImportConversion.text_wrapper(' AND ').join(where_clause))
             statement.add(self.text_wrapper(full_query_text))
         return statement
